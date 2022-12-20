@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Prosumma
       Prosumma.Exceptions
       Prosumma.Logging
       Prosumma.Util
