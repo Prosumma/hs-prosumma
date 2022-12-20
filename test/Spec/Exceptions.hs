@@ -19,7 +19,7 @@ instance Exception SqlError
 data RandomError = RandomError deriving (Show, Typeable)
 instance Exception RandomError
 
-matchByCode :: ByteString -> ServerError -> MatchException SqlError ServerError
+matchByCode :: ByteString -> HelpMatchException SqlError ServerError
 matchByCode code = throwWhen $ \(SqlError code') -> code == code'
 
 matchDefaultErrors :: MatchException SomeException SomeException

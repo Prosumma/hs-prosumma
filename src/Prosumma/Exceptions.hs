@@ -1,4 +1,5 @@
 module Prosumma.Exceptions (
+  HelpMatchException,
   MatchException,
   catchMatch,
   matchAll,
@@ -13,6 +14,7 @@ import RIO hiding (log)
 import Text.Printf
 
 type MatchException original matched = original -> Either matched original
+type HelpMatchException original matched = matched -> MatchException original matched
 
 -- | Attempts to match `SomeException` to the type of `original`.
 --
@@ -40,7 +42,7 @@ matchException handler original = case fromException original of
 -- 
 -- > matchSqlState :: ByteString -> ServerError -> MatchException SqlError ServerError
 -- > matchSqlState code = throwWhen $ \sqe -> sqlState sqe == code
-throwWhen :: (original -> Bool) -> matched -> MatchException original matched
+throwWhen :: (original -> Bool) -> HelpMatchException original matched 
 throwWhen cond matched original = if cond original then throwError matched else return original
 
 -- | Used by `catchMatch` to attempt to match an exception. 
