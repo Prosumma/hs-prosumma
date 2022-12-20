@@ -62,10 +62,13 @@ testExceptions = do
     let fallback = matchAll $ ServerError 500
     it "should provide a fallback when last in the chain without a match" $ 
       flip shouldThrow (isServerError 500) $
+        -- RandomError isn't mapped to anything, so the fallback runs.
         runApp $ catchMatch (fallback <=< matchDefaultErrors) $ throwM RandomError
     it "should not provide a fallback when last in the chain with a match" $
       flip shouldThrow (isServerError 6) $
+        -- "NOAPP" is matched to ServerError 6, so the fallback never runs.
         runApp $ catchMatch (matchDefaultErrors >=> fallback) $ throwM $ SqlError "NOAPP" 
     it "should override everything when executed first in the match chain" $
       flip shouldThrow (isServerError 500) $
+        -- The fallback occurs first, so everything else is skipped.
         runApp $ catchMatch (fallback >=> matchDefaultErrors) $ throwM $ SqlError "NOAPP"
