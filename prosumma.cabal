@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Prosumma
+      Prosumma.AWS
       Prosumma.Exceptions
       Prosumma.Logging
       Prosumma.Util
@@ -39,7 +40,10 @@ library
       ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wno-name-shadowing -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
+      amazonka >=2.0 && <3
+    , amazonka-core >=2.0 && <3
+    , amazonka-sts >=2.0 && <3
+    , base >=4.7 && <5
     , exceptions
     , mtl
     , rio
@@ -57,7 +61,10 @@ executable prosumma-exe
       ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wno-name-shadowing -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      amazonka >=2.0 && <3
+    , amazonka-core >=2.0 && <3
+    , amazonka-sts >=2.0 && <3
+    , base >=4.7 && <5
     , exceptions
     , mtl
     , prosumma
@@ -78,7 +85,10 @@ test-suite prosumma-test
       ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wno-name-shadowing -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      amazonka >=2.0 && <3
+    , amazonka-core >=2.0 && <3
+    , amazonka-sts >=2.0 && <3
+    , base >=4.7 && <5
     , exceptions
     , hspec
     , hspec-expectations

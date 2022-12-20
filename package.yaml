@@ -20,6 +20,9 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/prosumma#readme>
 
 dependencies:
+- amazonka >= 2.0 && < 3
+- amazonka-core >= 2.0 && < 3
+- amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
 - exceptions
 - mtl
