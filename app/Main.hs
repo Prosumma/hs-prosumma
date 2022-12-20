@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Lib
+import Prelude (putStrLn)
 import RIO
 
 main :: IO ()
-main = someFunc
+main = putStrLn "Hello, World!"

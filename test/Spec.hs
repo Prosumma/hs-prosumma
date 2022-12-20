@@ -1,2 +1,6 @@
+import RIO
+import Spec.Exceptions
+import Test.Hspec
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = hspec testExceptions

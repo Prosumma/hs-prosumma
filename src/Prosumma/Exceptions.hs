@@ -1,6 +1,7 @@
 module Prosumma.Exceptions (
   MatchException,
   catchMatch,
+  matchAll,
   matchException,
   throwMatch,
   throwWhen
@@ -49,7 +50,7 @@ throwWhen cond matched original = if cond original then throwError matched else 
 -- joined by `>=>`.
 throwMatch :: (MonadThrow m, HasLogging m, MonadIO m) => MatchException SomeException SomeException -> SomeException -> m a
 throwMatch match e = do
-  log $ printf "throwMatch: %s" (show e)
+  log $ printf "throwMatch: %s\n" (show e)
   case match e of
     Left e -> throwM e
     Right e -> throwM e
@@ -66,3 +67,9 @@ throwMatch match e = do
 -- > catchMatch defaultSqlToServerErrors getUser
 catchMatch :: (MonadUnliftIO m, MonadThrow m, HasLogging m) => MatchException SomeException SomeException -> m a -> m a
 catchMatch match action = catchAny action $ throwMatch match 
+
+-- | Allows the specification of a fallback exception.
+--
+-- > matchAll (ServerError 500) >=> defaultExceptions
+matchAll :: Exception e => e -> MatchException SomeException SomeException
+matchAll = const . throwError . toException 
