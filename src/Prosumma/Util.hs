@@ -2,10 +2,12 @@ module Prosumma.Util (
   also,
   fmapMaybeM,
   (<->),
-  (<#>)
+  (<#>),
+  (<=>)
 ) where
 
 import RIO
+import RIO.Map (singleton)
 
 also :: Monad m => (a -> m b) -> a -> m a
 also f a = f a >> return a
@@ -29,3 +31,12 @@ infixl 8 <->
 a <#> b = [a <-> b] 
 
 infixl 7 <#>
+
+-- | Shortcut to create a Map from a pair
+--
+-- Useful for creating maps:
+-- > "foo" <=> "bar" <> "bing" <=> "bang"
+(<=>) :: k -> v -> Map k v
+k <=> v = singleton k v
+
+infixl 7 <=>
