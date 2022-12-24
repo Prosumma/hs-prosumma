@@ -13,7 +13,7 @@ class HasEnv m where
 class Monad m => MonadAWS m where
   sendAWS :: (AWSRequest r) => r -> m (AWSResponse r)
 
-newtype AWS a = AWS { unAWS :: ReaderT Env IO a } deriving (Functor, Applicative, Monad, MonadIO)
+newtype AWS a = AWS { unAWS :: ReaderT Env IO a } deriving (Functor, Applicative, Monad, MonadIO, MonadThrow)
 
 runAWS :: MonadIO m => Env -> AWS a -> m a
 runAWS env = liftIO . flip runReaderT env . unAWS
