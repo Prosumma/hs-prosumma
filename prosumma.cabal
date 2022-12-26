@@ -29,6 +29,7 @@ library
       Prosumma.AWS
       Prosumma.Exceptions
       Prosumma.Logging
+      Prosumma.Textual
       Prosumma.Util
   other-modules:
       Paths_prosumma
