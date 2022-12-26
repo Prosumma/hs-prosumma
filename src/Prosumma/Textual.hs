@@ -6,3 +6,4 @@ import RIO
 
 class Textual a where
   fromText :: Text -> Maybe a
+  toText :: a -> Text
