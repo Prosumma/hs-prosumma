@@ -20,13 +20,20 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/prosumma#readme>
 
 dependencies:
+- aeson
 - amazonka >= 2.0 && < 3
 - amazonka-core >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
+- data-default
+- email-validate
 - exceptions
+- lens
 - mtl
+- postgresql-simple
 - rio
+- regex-tdfa
+- string-conversions
 
 ghc-options:
 - -Wall
