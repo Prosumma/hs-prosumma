@@ -1,7 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- TODO: These belong in the Prosumma library for general use.
-
 module Prosumma.Types (
   AppName,
   Language(..),
