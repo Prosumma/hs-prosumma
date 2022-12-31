@@ -1,0 +1,8 @@
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export AWS_MASTER_KEY_ARN=
+export PGDATABASE=
+export PGUSER=
+export PGPASSWORD=
+export PG_CONNECTION_STRING="dbname=$PGDATABASE user=$PGUSER password=$PGPASSWORD"
+export PG_SCRIPT=

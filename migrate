@@ -1,0 +1,12 @@
+#!/usr/bin/zsh
+
+source env
+
+PG_SCRIPT=${1:-$PG_SCRIPT}
+
+if [[ -z $PG_SCRIPT ]]; then
+  echo 'Pass a file as the first parameter' 2>&1
+  exit -1
+fi
+
+psql < $PG_SCRIPT
