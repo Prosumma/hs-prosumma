@@ -9,4 +9,4 @@ if [[ -z $PG_SCRIPT ]]; then
   exit -1
 fi
 
-psql < $PG_SCRIPT
+cat "${PG_VARS:-/dev/null}" $PG_SCRIPT | psql -v ON_ERROR_STOP=1

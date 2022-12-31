@@ -1,0 +1,20 @@
+\c postgres
+
+CREATE PROCEDURE pg_temp.recreate_role(_rolname name, _password TEXT)
+LANGUAGE PLPGSQL AS $$
+BEGIN
+  PERFORM FROM pg_catalog.pg_roles WHERE rolname = _rolname;
+  IF FOUND THEN
+    EXECUTE FORMAT('DROP ROLE %I', _rolname);
+  END IF;
+  EXECUTE FORMAT('CREATE ROLE %I LOGIN PASSWORD %L', _rolname, _password);
+END;
+$$;
+
+-- These passwords are obviously not used in production.
+CALL pg_temp.recreate_role('auth', 'mocode');
+CALL pg_temp.recreate_role('messaging', 'mocode');
+CALL pg_temp.recreate_role('settings', 'mocode');
+
+DROP DATABASE IF EXISTS prosumma;
+CREATE DATABASE prosumma;
