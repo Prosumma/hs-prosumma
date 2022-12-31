@@ -18,3 +18,8 @@ CALL pg_temp.recreate_role('settings', 'mocode');
 
 DROP DATABASE IF EXISTS prosumma;
 CREATE DATABASE prosumma;
+
+\c prosumma
+
+CREATE EXTENSION "uuid-ossp";
+CREATE EXTENSION citext;
