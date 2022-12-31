@@ -1,5 +1,7 @@
 \c postgres
 
+DROP DATABASE IF EXISTS prosumma;
+
 CREATE PROCEDURE pg_temp.recreate_role(_rolname name, _password TEXT)
 LANGUAGE PLPGSQL AS $$
 BEGIN
@@ -16,7 +18,6 @@ CALL pg_temp.recreate_role('auth', 'mocode');
 CALL pg_temp.recreate_role('messaging', 'mocode');
 CALL pg_temp.recreate_role('settings', 'mocode');
 
-DROP DATABASE IF EXISTS prosumma;
 CREATE DATABASE prosumma;
 
 \c prosumma
