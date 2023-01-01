@@ -6,6 +6,8 @@ module Prosumma.Types (
   Localization(..),
   Name(..),
   Region(..),
+  ifMatchTextual,
+  fromFieldTextual,
   localizationLanguage,
   localizationRegion
 ) where
@@ -23,6 +25,33 @@ import Text.Regex.TDFA
 
 import qualified RIO.Text as Text
 
+-- | Helper to implement `Textual`'s `fromText`.
+ifMatchTextual :: Text -> (Text -> a) -> Text -> Maybe a 
+ifMatchTextual regex make source = if source =~ regex
+  then Just $ make source
+  else Nothing
+
+-- | Helper to implement `FromField`'s `fromField`.
+fromFieldTextual :: (Textual a, Typeable a) => String -> FieldParser a
+fromFieldTextual name field mdata = do
+  text <- fromField field mdata
+  case fromText text of
+    Just value -> return value
+    Nothing -> returnError ConversionFailed field $ printf "'%s' is not a valid %s." text name 
+
+-- | Helper to parse from JSON to a Textual instance
+parseJSONTextual :: Textual a => String -> Value -> Parser a
+parseJSONTextual name (String text) = case fromText text of
+  Just thing -> return thing
+  Nothing -> fail $ printf "'%s' is not a valid %s." text name
+parseJSONTextual name invalid = typeMismatch name invalid
+
+-- | Helper to implement `IsString`'s `fromString` for a `Textual`.
+fromStringTextual :: Textual a => String -> String -> a
+fromStringTextual name string = case fromText (fromString string) of
+  Just thing -> thing
+  Nothing -> error $ printf "'%s' is not a valid %s." string name
+
 newtype Language = Language Text deriving (Eq, Ord)
 
 instance Show Language where
@@ -32,15 +61,11 @@ languageRegex :: Text
 languageRegex = "^[a-z]{2}$"
 
 instance Textual Language where
-  fromText text = if text =~ languageRegex
-    then Just $ Language text
-    else Nothing
+  fromText = ifMatchTextual languageRegex Language
   toText (Language language) = language
 
 instance IsString Language where
-  fromString string = case fromText (fromString string) of 
-    Just language -> language
-    Nothing -> error $ printf "'%s' is not a valid language code." string
+  fromString = fromStringTextual "Language" 
 
 instance Default Language where
   def = "en"
@@ -49,13 +74,10 @@ instance ToJSON Language where
   toJSON (Language language) = toJSON language
 
 instance FromJSON Language where
-  parseJSON (String language) = case fromText language of
-    Just language -> return language
-    Nothing -> fail $ printf "'%s' is not a valid language." language
-  parseJSON invalid = typeMismatch "Language" invalid
+  parseJSON = parseJSONTextual "Language" 
 
 instance FromField Language where
-  fromField = fromJSONField
+  fromField = fromFieldTextual "Language" 
 
 newtype Region = Region Text deriving (Eq, Ord)
 
@@ -66,27 +88,20 @@ regionRegex :: Text
 regionRegex = "^[A-Z]{2}$"
 
 instance Textual Region where
-  fromText text = if text =~ regionRegex
-    then Just $ Region text
-    else Nothing
+  fromText = ifMatchTextual regionRegex Region 
   toText (Region region) = region
 
 instance IsString Region where
-  fromString string = case fromText (fromString string) of
-    Just region -> region
-    Nothing -> error $ printf "'%s' is not a valid region code." string
+  fromString = fromStringTextual "Region" 
 
 instance ToJSON Region where
   toJSON (Region region) = toJSON region
 
 instance FromJSON Region where
-  parseJSON (String region) = case fromText region of 
-    Just region -> return region
-    Nothing -> fail $ printf "'%s' is not a valid region." region
-  parseJSON invalid = typeMismatch "Region" invalid
+  parseJSON = parseJSONTextual "Region"
 
 instance FromField Region where
-  fromField = fromJSONField
+  fromField = fromFieldTextual "Region" 
 
 data Localization = Localization {
   _localizationLanguage :: !Language,
@@ -117,21 +132,16 @@ instance Textual Localization where
   toText (Localization (Language language) Nothing) = language
 
 instance IsString Localization where
-  fromString string = case fromText (fromString string) of 
-    Just localization -> localization
-    Nothing -> error $ printf "'%s' is not a valid localization string"
+  fromString = fromStringTextual "Localization" 
   
 instance ToJSON Localization where
   toJSON = toJSON . toText
 
 instance FromJSON Localization where
-  parseJSON (String localization) = case fromText localization of
-    Just localization -> return localization
-    Nothing -> fail $ printf "'%s' is not a valid Localization." localization
-  parseJSON invalid = typeMismatch "Localization" invalid
+  parseJSON = parseJSONTextual "Localization"
 
 instance FromField Localization where
-  fromField = fromJSONField
+  fromField = fromFieldTextual "Localization" 
 
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
@@ -142,26 +152,19 @@ instance Show Name where
   show (Name name) = convertString name
 
 instance Textual Name where
-  fromText text = if text =~ nameRegex
-    then Just $ Name text
-    else Nothing
+  fromText = ifMatchTextual nameRegex Name 
   toText (Name name) = name
 
 instance IsString Name where
-  fromString string = case fromText (fromString string) of
-    Just name -> name
-    Nothing -> error $ printf "'%s' is not a valid Name."
+  fromString = fromStringTextual "Name" 
 
 instance ToJSON Name where
   toJSON = toJSON . toText
 
 instance FromJSON Name where
-  parseJSON (String name) = case fromText name of
-    Just name -> return name
-    Nothing -> fail $ printf "'%s' is not a valid Name." name
-  parseJSON invalid = typeMismatch "Name" invalid
+  parseJSON = parseJSONTextual "Name"
 
 instance FromField Name where
-  fromField = fromJSONField
+  fromField = fromFieldTextual "Name" 
 
 type AppName = Name
