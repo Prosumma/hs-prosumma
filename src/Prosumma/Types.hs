@@ -9,7 +9,9 @@ module Prosumma.Types (
   ifMatchTextual,
   fromFieldTextual,
   localizationLanguage,
-  localizationRegion
+  localizationRegion,
+  parseJSONTextual,
+  fromStringTextual
 ) where
 
 import Data.Aeson
