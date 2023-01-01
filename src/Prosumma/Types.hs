@@ -6,16 +6,11 @@ module Prosumma.Types (
   Localization(..),
   Name(..),
   Region(..),
-  ifMatchTextual,
-  fromFieldTextual,
   localizationLanguage,
   localizationRegion,
-  parseJSONTextual,
-  fromStringTextual
 ) where
 
 import Data.Aeson
-import Data.Aeson.Types
 import Data.Default
 import Control.Lens (makeLenses)
 import Data.String.Conversions
@@ -26,33 +21,6 @@ import Text.Printf
 import Text.Regex.TDFA
 
 import qualified RIO.Text as Text
-
--- | Helper to implement `Textual`'s `fromText`.
-ifMatchTextual :: Text -> (Text -> a) -> Text -> Maybe a 
-ifMatchTextual regex make source = if source =~ regex
-  then Just $ make source
-  else Nothing
-
--- | Helper to implement `FromField`'s `fromField`.
-fromFieldTextual :: (Textual a, Typeable a) => String -> FieldParser a
-fromFieldTextual name field mdata = do
-  text <- fromField field mdata
-  case fromText text of
-    Just value -> return value
-    Nothing -> returnError ConversionFailed field $ printf "'%s' is not a valid %s." text name 
-
--- | Helper to parse from JSON to a Textual instance
-parseJSONTextual :: Textual a => String -> Value -> Parser a
-parseJSONTextual name (String text) = case fromText text of
-  Just thing -> return thing
-  Nothing -> fail $ printf "'%s' is not a valid %s." text name
-parseJSONTextual name invalid = typeMismatch name invalid
-
--- | Helper to implement `IsString`'s `fromString` for a `Textual`.
-fromStringTextual :: Textual a => String -> String -> a
-fromStringTextual name string = case fromText (fromString string) of
-  Just thing -> thing
-  Nothing -> error $ printf "'%s' is not a valid %s." string name
 
 newtype Language = Language Text deriving (Eq, Ord)
 
