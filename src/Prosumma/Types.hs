@@ -3,7 +3,7 @@
 module Prosumma.Types (
   AppName,
   Language,
-  Localization,
+  Localization(..),
   Name,
   Region,
   localizationLanguage,
