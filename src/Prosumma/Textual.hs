@@ -3,18 +3,28 @@ module Prosumma.Textual (
   ifMatchTextual,
   fromFieldTextual,
   fromStringTextual,
-  parseJSONTextual
+  parseJSONTextual,
+  unsafeFromText
 ) where
 
 import Data.Aeson.Types
 import Database.PostgreSQL.Simple.FromField
 import RIO
+import RIO.Partial
 import Text.Regex.TDFA
 import Text.Printf
 
 class Textual a where
   fromText :: Text -> Maybe a
   toText :: a -> Text
+
+-- | Unsafely converts from `Text` to a `Textual`.
+--
+-- Causes a runtime error if conversion is invalid.
+-- Use this only if you're very sure that the `Text` 
+-- is valid for the target `Textual`.
+unsafeFromText :: Textual a => Text -> a
+unsafeFromText = fromJust . fromText
 
 -- | Helper to implement `Textual`'s `fromText`
 -- for simple newtype wrappers.
