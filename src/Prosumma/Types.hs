@@ -2,10 +2,10 @@
 
 module Prosumma.Types (
   AppName,
-  Language(..),
-  Localization(..),
-  Name(..),
-  Region(..),
+  Language,
+  Localization,
+  Name,
+  Region,
   localizationLanguage,
   localizationRegion,
 ) where
@@ -41,7 +41,7 @@ instance Default Language where
   def = "en"
 
 instance ToJSON Language where
-  toJSON (Language language) = toJSON language
+  toJSON = toJSON . toText 
 
 instance FromJSON Language where
   parseJSON = parseJSONTextual "Language" 
@@ -65,7 +65,7 @@ instance IsString Region where
   fromString = fromStringTextual "Region" 
 
 instance ToJSON Region where
-  toJSON (Region region) = toJSON region
+  toJSON = toJSON . toText
 
 instance FromJSON Region where
   parseJSON = parseJSONTextual "Region"
