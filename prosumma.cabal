@@ -90,6 +90,7 @@ test-suite prosumma-test
   main-is: Spec.hs
   other-modules:
       Spec.Exceptions
+      Spec.Textual
       Spec.Util
       Paths_prosumma
   hs-source-dirs:
