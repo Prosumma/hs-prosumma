@@ -8,6 +8,9 @@ import Test.Hspec
 
 testUtil :: Spec
 testUtil = do 
+  describe "firstJust and firstJusts" $
+    it "gets the first Just" $
+      firstJust Nothing (Just 2) `shouldBe` Just 2
   describe "<->" $
     it "stitches together a pair" $
       2 <-> 3 `shouldBe` (2, 3)

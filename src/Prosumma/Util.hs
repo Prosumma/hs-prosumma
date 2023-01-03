@@ -1,5 +1,7 @@
 module Prosumma.Util (
   also,
+  firstJust,
+  firstJusts,
   fmapMaybeM,
   (<->),
   (<#>),
@@ -8,6 +10,11 @@ module Prosumma.Util (
 
 import RIO
 import RIO.Map (singleton)
+
+firstJust a b = firstJusts [a, b]
+
+firstJusts :: Foldable f => f (Maybe a) -> Maybe a
+firstJusts = msum
 
 also :: Monad m => (a -> m b) -> a -> m a
 also f a = f a >> return a
