@@ -3,17 +3,24 @@ module Prosumma.Util (
   firstJust,
   firstJusts,
   fmapMaybeM,
+  makeProsummaLenses,
   (<->),
   (<#>),
   (<=>),
   (?>>=)
 ) where
 
+import Control.Lens
+import Language.Haskell.TH
 import RIO
 import RIO.Map (singleton)
 
+makeProsummaLenses :: Name -> DecsQ
+makeProsummaLenses = makeLensesWith abbreviatedFields
+
 infixl 1 `firstJust`
 
+firstJust :: Maybe a -> Maybe a -> Maybe a
 firstJust a b = firstJusts [a, b]
 
 infixl 1 ?>>=

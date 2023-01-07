@@ -1,3 +1,4 @@
+{-# LANGUAGE FunctionalDependencies, TemplateHaskell, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 module Spec.Util (testUtil) where
 
@@ -5,6 +6,13 @@ import Prosumma.Util
 import RIO
 import RIO.Map (fromList)
 import Test.Hspec
+
+data Structure = Structure {
+  strucText :: !Text,
+  strucInt :: !Int
+} deriving (Eq, Show)
+
+makeProsummaLenses ''Structure
 
 testUtil :: Spec
 testUtil = do 
@@ -24,3 +32,9 @@ testUtil = do
       let expected = fromList [(2, 3), (4, 5)]
       let tested = 2 <=> 3 <> 4 <=> 5
       expected `shouldBe` tested
+  describe "makeProsummaLenses" $
+    it "makes abbreviated lenses" $ do
+      let structure = Structure "xyz" 3
+      structure^.text `shouldBe` "xyz"
+      structure^.int `shouldBe` 3 
+      (structure & int .~ 44) `shouldBe` Structure "xyz" 44 

@@ -33,6 +33,7 @@ dependencies:
 - rio
 - regex-tdfa
 - string-conversions
+- template-haskell
 
 ghc-options:
 - -Wall
