@@ -18,7 +18,7 @@ testUtil :: Spec
 testUtil = do 
   describe "firstJust and firstJusts" $
     it "gets the first Just" $
-      (Nothing ?>>= Just 2) `shouldBe` Just 2
+      (Nothing ?? Just 2) `shouldBe` Just 2
   describe "<->" $
     it "stitches together a pair" $
       2 <-> 3 `shouldBe` (2, 3)

@@ -4,13 +4,13 @@ module Prosumma.Util (
   firstJusts,
   fmapMaybeM,
   makeProsummaLenses,
+  (??),
   (<->),
   (<#>),
-  (<=>),
-  (?>>=)
+  (<=>)
 ) where
 
-import Control.Lens
+import Control.Lens hiding ((??))
 import Language.Haskell.TH
 import RIO
 import RIO.Map (singleton)
@@ -23,10 +23,10 @@ infixl 1 `firstJust`
 firstJust :: Maybe a -> Maybe a -> Maybe a
 firstJust a b = firstJusts [a, b]
 
-infixl 1 ?>>=
+infixl 1 ?? 
 
-(?>>=) :: Maybe a -> Maybe a -> Maybe a
-a ?>>= b = firstJust a b
+(??) :: Maybe a -> Maybe a -> Maybe a
+a ?? b = firstJust a b
 
 firstJusts :: Foldable f => f (Maybe a) -> Maybe a
 firstJusts = msum
