@@ -25,15 +25,40 @@ firstJust a b = firstJusts [a, b]
 
 infixl 1 ?? 
 
+-- | Selects the first `Just`
+--
+-- > let a = Nothing
+-- > let b = Just 7
+-- > a ?? b
+--
+-- The above results in `Just 7`.
 (??) :: Maybe a -> Maybe a -> Maybe a
 a ?? b = firstJust a b
 
+-- | Selects the first of a list of Maybes.
+-- 
+-- > firstJusts [Nothing, Just 7, Just 5]
+--
+-- The above results in `Just 7`.
+--
+-- This is just `msum` for `Maybe` with a
+-- prettier, more explicit name.
 firstJusts :: Foldable f => f (Maybe a) -> Maybe a
 firstJusts = msum
 
+-- | Do something as a side effect.
+--
+-- > foo :: IO Int 
+-- > foo = also print 17
+--
+-- The above is the same as:
+--
+-- > foo :: IO Int
+-- > foo = let x = 17 in print x >> return x
 also :: Monad m => (a -> m b) -> a -> m a
 also f a = f a >> return a
 
+-- | Monadic `fmap` for `Maybe`.
 fmapMaybeM :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeM _ Nothing = return Nothing
 fmapMaybeM f (Just x) = f x <&> Just

@@ -25,6 +25,7 @@ import Text.Regex.TDFA
 
 import qualified RIO.Text as Text
 
+-- | ISO 639-1 language code
 newtype Language = Language' Text deriving (Eq, Ord)
 
 pattern Language :: Text -> Language
