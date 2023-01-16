@@ -28,6 +28,7 @@ library
       Prosumma
       Prosumma.AWS
       Prosumma.Exceptions
+      Prosumma.PG
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Util
@@ -50,8 +51,10 @@ library
     , exceptions
     , lens
     , mtl
+    , piggy
     , postgresql-simple
     , regex-tdfa
+    , resource-pool
     , rio
     , string-conversions
     , template-haskell
@@ -78,9 +81,11 @@ executable prosumma-exe
     , exceptions
     , lens
     , mtl
+    , piggy
     , postgresql-simple
     , prosumma
     , regex-tdfa
+    , resource-pool
     , rio
     , string-conversions
     , template-haskell
@@ -113,9 +118,11 @@ test-suite prosumma-test
     , hspec-expectations
     , lens
     , mtl
+    , piggy
     , postgresql-simple
     , prosumma
     , regex-tdfa
+    , resource-pool
     , rio
     , string-conversions
     , template-haskell

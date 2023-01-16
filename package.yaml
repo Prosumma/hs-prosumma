@@ -29,9 +29,11 @@ dependencies:
 - exceptions
 - lens
 - mtl
+- piggy
 - postgresql-simple
 - rio
 - regex-tdfa
+- resource-pool
 - string-conversions
 - template-haskell
 

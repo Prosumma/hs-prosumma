@@ -46,6 +46,8 @@ extra-deps:
       - lib/amazonka
       - lib/amazonka-core
       - lib/services/amazonka-sts
+  - github: prosumma/haskellpg
+    commit: ec4f439829b6bc4812d36f21f121c35aebcae2a5 
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

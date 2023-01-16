@@ -1,33 +1,21 @@
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
 
-module Prosumma.AWS (HasEnv(..), MonadAWS(..), AWS, runAWS, sendAWSRequest) where
+module Prosumma.AWS (
+  HasAWSEnv(..),
+  sendAWS
+) where
 
 import Amazonka
-import Control.Monad.IO.Class
 import Control.Monad.Reader
 import RIO
 
-class HasEnv m where
-  getEnv :: m Env
+class HasAWSEnv a where
+  getAWSEnv :: a -> Env
 
-class Monad m => MonadAWS m where
-  sendAWS :: (AWSRequest r) => r -> m (AWSResponse r)
+instance HasAWSEnv Env where
+  getAWSEnv = id
 
-newtype AWS a = AWS { unAWS :: ReaderT Env IO a } deriving (Functor, Applicative, Monad, MonadIO, MonadThrow)
-
-runAWS :: MonadIO m => Env -> AWS a -> m a
-runAWS env = liftIO . flip runReaderT env . unAWS
-
-sendAWSRequest :: (MonadUnliftIO m, HasEnv m, AWSRequest r) => r -> m (AWSResponse r)
-sendAWSRequest r = do
-  env <- getEnv
+sendAWS :: (MonadUnliftIO m, AWSRequest r, MonadReader env m, HasAWSEnv env) => r -> m (AWSResponse r)
+sendAWS r = do
+  env <- asks getAWSEnv
   runResourceT $ send env r
-
-instance HasEnv AWS where
-  getEnv = AWS ask
-
-instance MonadUnliftIO AWS where
-  withRunInIO action = AWS $ withRunInIO $ \run -> action (run . unAWS)
-
-instance MonadAWS AWS where
-  sendAWS = sendAWSRequest 
