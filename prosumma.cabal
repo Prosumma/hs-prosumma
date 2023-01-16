@@ -28,7 +28,6 @@ library
       Prosumma
       Prosumma.AWS
       Prosumma.Exceptions
-      Prosumma.Logging
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Util

@@ -10,7 +10,7 @@ module Prosumma.Util (
   (<=>)
 ) where
 
-import Control.Lens hiding ((??))
+import Control.Lens hiding ((??), (.~))
 import Language.Haskell.TH
 import RIO
 import RIO.Map (singleton)

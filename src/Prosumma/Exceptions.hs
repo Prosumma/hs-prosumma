@@ -9,9 +9,7 @@ module Prosumma.Exceptions (
 ) where
 
 import Control.Monad.Error.Class
-import Prosumma.Logging
-import RIO hiding (log)
-import Text.Printf
+import RIO 
 
 type MatchException original matched = original -> Either matched original
 type HelpMatchException original matched = matched -> MatchException original matched
@@ -50,9 +48,8 @@ throwWhen cond matched original = if cond original then throwError matched else 
 -- `throwMatch` passes the original exception through the match chain, rethrowing the left-hand side if a match occurred
 -- or the right-hand side if no match occurred. A match chain typically consists of a series of `MatchException` instances
 -- joined by `>=>`.
-throwMatch :: (MonadThrow m, HasLogging m, MonadIO m) => MatchException SomeException SomeException -> SomeException -> m a
+throwMatch :: MonadThrow m => MatchException SomeException SomeException -> SomeException -> m a
 throwMatch match e = do
-  log $ printf "throwMatch: %s\n" (show e)
   case match e of
     Left e -> throwM e
     Right e -> throwM e
@@ -67,7 +64,7 @@ throwMatch match e = do
 -- > defaultSqlToServerErrors = matchException $ matchNoApp >=> matchNoUsr
 -- >
 -- > catchMatch defaultSqlToServerErrors getUser
-catchMatch :: (MonadUnliftIO m, MonadThrow m, HasLogging m) => MatchException SomeException SomeException -> m a -> m a
+catchMatch :: (MonadUnliftIO m, MonadThrow m) => MatchException SomeException SomeException -> m a -> m a
 catchMatch match action = catchAny action $ throwMatch match 
 
 -- | Allows the specification of a fallback exception.
