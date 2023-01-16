@@ -7,7 +7,6 @@ module Spec.Exceptions (
 import Control.Monad.Error.Class
 import RIO
 import Prosumma.Exceptions
-import Prosumma.Logging
 import Test.Hspec
 
 newtype ServerError = ServerError Int deriving (Show, Typeable)
@@ -38,9 +37,6 @@ newtype App a = App { runApp :: IO a } deriving (Functor, Applicative, Monad, Mo
 
 instance MonadUnliftIO App where
   withRunInIO action = App $ withRunInIO $ \run -> action (run . runApp)
-
-instance HasLogging App where
-  allowLogging = return True 
 
 testExceptions :: Spec
 testExceptions = do 
