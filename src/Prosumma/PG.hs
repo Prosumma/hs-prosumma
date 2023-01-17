@@ -4,7 +4,6 @@ module Prosumma.PG (
 ) where
 
 import Data.Pool
-import Database.PostgreSQL.Simple (Connection)
 import Piggy
 import RIO
 

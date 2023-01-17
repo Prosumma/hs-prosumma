@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Prosumma.AWS (
+  Env,
   HasAWSEnv(..),
   sendAWS
 ) where
