@@ -40,14 +40,15 @@ packages:
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
 extra-deps:
-  - github: brendanhay/amazonka
-    commit: 0ccede621e56fb6f240e4850e205cde82d0e4a4b 
-    subdirs:
-      - lib/amazonka
-      - lib/amazonka-core
-      - lib/services/amazonka-sts
-  - github: prosumma/haskellpg
-    commit: 01ce897e1a81a34a0e4c69cf3163d8d02a87fd3f
+- github: brendanhay/amazonka
+  commit: 0ccede621e56fb6f240e4850e205cde82d0e4a4b 
+  subdirs:
+  - lib/amazonka
+  - lib/amazonka-core
+  - lib/services/amazonka-sts
+- github: prosumma/haskellpg
+  commit: fd371be5a21d6f2c94ca9dcd70322e3b52837a44     
+               
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

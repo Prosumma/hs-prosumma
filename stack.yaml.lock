@@ -46,14 +46,14 @@ packages:
 - completed:
     name: piggy
     pantry-tree:
-      sha256: afad53b34563a00a889c97213a15e30ac96a2ac96cd70e223f93ff944ae4a099
-      size: 613
-    sha256: 1f2575eccf7a5ab60a0ae0fbed25cfabc785eaf2731adbf8d72c67df55c15cec
-    size: 7153
-    url: https://github.com/prosumma/haskellpg/archive/01ce897e1a81a34a0e4c69cf3163d8d02a87fd3f.tar.gz
-    version: 1.0.0
+      sha256: 39e34e3944355200b0e577410e877ec2809cdcd79098ca407e1f023819007b89
+      size: 671
+    sha256: b8b1eedc2b6d302af8fcc85b4a210af1bfd31cf64b82099999af80f0fb226edf
+    size: 7325
+    url: https://github.com/prosumma/haskellpg/archive/fd371be5a21d6f2c94ca9dcd70322e3b52837a44.tar.gz
+    version: 1.0.1
   original:
-    url: https://github.com/prosumma/haskellpg/archive/01ce897e1a81a34a0e4c69cf3163d8d02a87fd3f.tar.gz
+    url: https://github.com/prosumma/haskellpg/archive/fd371be5a21d6f2c94ca9dcd70322e3b52837a44.tar.gz
 snapshots:
 - completed:
     sha256: 428ec8d5ce932190d3cbe266b9eb3c175cd81e984babf876b64019e2cbe4ea68
