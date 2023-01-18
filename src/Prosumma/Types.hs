@@ -16,7 +16,6 @@ module Prosumma.Types (
 import Data.Aeson
 import Data.Default
 import Control.Lens (makeLenses)
-import Data.String.Conversions
 import Database.PostgreSQL.Simple.FromField
 import Prosumma.Textual
 import RIO
@@ -32,7 +31,7 @@ pattern Language :: Text -> Language
 pattern Language lang <- Language' lang
 
 instance Show Language where
-  show (Language' language) = convertString language
+  show = showTextual
 
 languageRegex :: Text
 languageRegex = "^[a-z]{2}$"
@@ -62,7 +61,7 @@ pattern Region :: Text -> Region
 pattern Region region <- Region' region
 
 instance Show Region where
-  show (Region' region) = convertString region
+  show = showTextual
 
 regionRegex :: Text
 regionRegex = "^[A-Z]{2}$"
@@ -132,7 +131,7 @@ pattern Name :: Text -> Name
 pattern Name name = Name' name
 
 instance Show Name where
-  show (Name' name) = convertString name
+  show = showTextual
 
 instance Textual Name where
   fromText = ifMatchTextual nameRegex Name'

@@ -4,11 +4,13 @@ module Prosumma.Textual (
   fromFieldTextual,
   fromStringTextual,
   parseJSONTextual,
-  unsafeFromText
+  unsafeFromText,
+  showTextual
 ) where
 
 import Data.Aeson.Types
 import Database.PostgreSQL.Simple.FromField
+import Data.String.Conversions
 import RIO
 import RIO.Partial
 import Text.Regex.TDFA
@@ -66,3 +68,10 @@ fromStringTextual :: Textual a => String -> String -> a
 fromStringTextual name string = case fromText (fromString string) of
   Just thing -> thing
   Nothing -> error $ printf "'%s' is not a valid %s." string name
+
+-- | Implements `Show` in terms of `Textual`.
+--
+-- > instance Show Foo where
+-- >   show = showTextual
+showTextual :: Textual a => a -> String
+showTextual = convertString . toText
