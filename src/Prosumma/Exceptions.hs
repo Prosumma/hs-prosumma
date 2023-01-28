@@ -6,8 +6,8 @@ module Prosumma.Exceptions (
   catchMatch,
   matchAll,
   matchException,
-  throwHttpStatus,
-  throwHttpStatusOutsideRange,
+  throwOnHttpStatusError,
+  throwOnHttpStatusOutsideRange,
   throwMatch,
   throwWhen
 ) where
@@ -79,10 +79,10 @@ matchAll :: Exception e => e -> MatchException SomeException SomeException
 matchAll = const . throwError . toException 
 
 -- | Throws an exception if the HTTP Status falls outside the given range.
-throwHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m ()
-throwHttpStatusOutsideRange range mkException response = let httpStatus = response^.(field @"httpStatus") in
+throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m ()
+throwOnHttpStatusOutsideRange range mkException response = let httpStatus = response^.(field @"httpStatus") in
   when (httpStatus `notElem` range) $ throwM $ mkException httpStatus
 
 -- | Throws an exception if the HTTP status falls outside the range 200..299.
-throwHttpStatus :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m ()
-throwHttpStatus = throwHttpStatusOutsideRange [200..299]
+throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m ()
+throwOnHttpStatusError = throwOnHttpStatusOutsideRange [200..299]
