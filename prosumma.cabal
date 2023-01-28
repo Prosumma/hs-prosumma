@@ -49,6 +49,7 @@ library
     , base >=4.7 && <5
     , data-default
     , exceptions
+    , generic-lens
     , lens
     , mtl
     , piggy
@@ -79,6 +80,7 @@ executable prosumma-exe
     , base >=4.7 && <5
     , data-default
     , exceptions
+    , generic-lens
     , lens
     , mtl
     , piggy
@@ -114,6 +116,7 @@ test-suite prosumma-test
     , base >=4.7 && <5
     , data-default
     , exceptions
+    , generic-lens
     , hspec
     , hspec-expectations
     , lens

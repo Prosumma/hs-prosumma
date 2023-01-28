@@ -27,6 +27,7 @@ dependencies:
 - base >= 4.7 && < 5
 - data-default
 - exceptions
+- generic-lens
 - lens
 - mtl
 - piggy
