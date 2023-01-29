@@ -25,7 +25,4 @@ sendAWS r = do
   runResourceT $ send env r
 
 sendAWSThrowOnError :: (MonadUnliftIO m, AWSRequest rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Exception e, rs ~ AWSResponse rq) => (Int -> e) -> rq -> m rs 
-sendAWSThrowOnError mkException request = do 
-  response <- sendAWS request
-  throwOnHttpStatusError mkException response
-  return response
+sendAWSThrowOnError mkException = throwOnHttpStatusError mkException <=< sendAWS

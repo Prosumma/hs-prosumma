@@ -78,11 +78,13 @@ catchMatch match action = catchAny action $ throwMatch match
 matchAll :: Exception e => e -> MatchException SomeException SomeException
 matchAll = const . throwError . toException 
 
--- | Throws an exception if the HTTP Status falls outside the given range.
-throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m ()
+-- | Throws an exception if the HTTP Status falls outside the given range, otherwise returns its last argument.
+throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m r 
 throwOnHttpStatusOutsideRange range mkException response = let httpStatus = response^.(field @"httpStatus") in
-  when (httpStatus `notElem` range) $ throwM $ mkException httpStatus
+  if httpStatus `notElem` range
+    then throwM $ mkException httpStatus
+    else return response
 
 -- | Throws an exception if the HTTP status falls outside the range 200..299.
-throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m ()
+throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m r 
 throwOnHttpStatusError = throwOnHttpStatusOutsideRange [200..299]
