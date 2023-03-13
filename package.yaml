@@ -35,6 +35,7 @@ dependencies:
 - rio
 - regex-tdfa
 - resource-pool
+- servant-server
 - string-conversions
 - template-haskell
 
