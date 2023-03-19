@@ -12,7 +12,7 @@ module Prosumma.Servant (
   ServerResponse
 ) where
 
-import Prosumma.Exceptions
+import Control.Monad.Error.Class
 import RIO hiding (Handler)
 import Servant
 
@@ -37,7 +37,7 @@ runApp :: ServerExceptionHandler s a -> s -> RIO s a -> ServerHandler a
 runApp handler state app = liftIO $ runRIO state $ catch (Right <$> app) handler
 
 mapApp :: ServerExceptionHandler s a -> s -> RIO s a -> Handler a
-mapApp handler state app = runApp handler state app >>= throwEither 
+mapApp handler state app = runApp handler state app >>= liftEither 
 
 runApplication :: HasServer api '[] => (forall a. ServerExceptionHandler s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler proxy api state = serve proxy $ hoistServer proxy (mapApp handler state) api
