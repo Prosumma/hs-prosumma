@@ -38,6 +38,7 @@ dependencies:
 - servant-server
 - string-conversions
 - template-haskell
+- text
 
 ghc-options:
 - -Wall
