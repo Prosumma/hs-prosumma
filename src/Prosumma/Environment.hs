@@ -15,7 +15,7 @@ import Data.Maybe
 import Data.String
 import Data.Text 
 import Data.Text.Read
-import Prelude hiding (read)
+import RIO hiding (fromRight, Reader)
 import System.Environment
 
 envMaybe :: (MonadIO m, IsString a) => Text -> m (Maybe a)
