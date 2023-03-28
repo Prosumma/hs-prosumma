@@ -15,11 +15,12 @@ import Data.Maybe
 import Data.String
 import Data.Text 
 import Data.Text.Read
+import Prosumma.Util
 import RIO hiding (fromRight, Reader)
 import System.Environment
 
 envMaybe :: (MonadIO m, IsString a) => Text -> m (Maybe a)
-envMaybe key = liftIO $ fmap (fromString <$>) (lookupEnv (unpack key))
+envMaybe key = liftIO $ fromString <<$>> lookupEnv (unpack key)
 
 envRead :: (MonadIO m) => Reader a -> Text -> m (Maybe a)
 envRead r = fmap (((fmap fst . fromRight) . r) =<<) . envMaybe

@@ -7,7 +7,8 @@ module Prosumma.Util (
   (??),
   (<->),
   (<#>),
-  (<=>)
+  (<=>),
+  (<<$>>)
 ) where
 
 import Control.Lens hiding ((??), (.~))
@@ -23,7 +24,7 @@ infixl 1 `firstJust`
 firstJust :: Maybe a -> Maybe a -> Maybe a
 firstJust a b = firstJusts [a, b]
 
-infixl 1 ?? 
+infixl 1 ??
 
 -- | Selects the first `Just`
 --
@@ -75,7 +76,7 @@ infixl 8 <->
 --
 -- > Map.fromList $ "foo" <#> "bar" <> "bing" <#> "bang"
 (<#>) :: a -> b -> [(a, b)]
-a <#> b = [a <-> b] 
+a <#> b = [a <-> b]
 
 infixl 7 <#>
 
@@ -87,3 +88,8 @@ infixl 7 <#>
 k <=> v = singleton k v
 
 infixl 7 <=>
+
+(<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+f <<$>> a = fmap (f <$>) a
+
+infixl 4 <<$>>
