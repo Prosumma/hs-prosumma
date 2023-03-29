@@ -8,7 +8,8 @@ module Prosumma.Util (
   (<->),
   (<#>),
   (<=>),
-  (<<$>>)
+  (<<$>>),
+  (<<&>>)
 ) where
 
 import Control.Lens hiding ((??), (.~))
@@ -93,3 +94,8 @@ infixl 7 <=>
 f <<$>> a = fmap (f <$>) a
 
 infixl 4 <<$>>
+
+(<<&>>) :: (Functor f, Functor g) => f (g a) -> (a -> b) -> f (g b)
+a <<&>> f = fmap (f <$>) a
+
+infixl 1 <<&>>
