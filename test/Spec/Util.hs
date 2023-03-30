@@ -37,4 +37,12 @@ testUtil = do
       let structure = Structure "xyz" 3
       structure^.text `shouldBe` "xyz"
       structure^.int `shouldBe` 3 
-      (structure & int .~ 44) `shouldBe` Structure "xyz" 44 
+      (structure & int .~ 44) `shouldBe` Structure "xyz" 44
+  describe "<<$>>" $
+    it "fmaps fmap" $ do
+      let x = Just (Just 3)
+      (*2) <<$>> x `shouldBe` Just (Just 6)
+  describe "<<&>>" $
+    it "fmaps fmap, but flipped" $ do
+      let x = Just (Just 3)
+      (x <<&>> (*7)) `shouldBe` Just (Just 21)

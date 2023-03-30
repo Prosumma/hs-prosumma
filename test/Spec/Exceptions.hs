@@ -50,7 +50,7 @@ testExceptions = do
       flip shouldThrow (isSqlError "NADA") $
         runApp $ catchMatch matchDefaultErrors $ throwM $ SqlError "NADA"
     it "should handle exceptions of multiple types" $
-      -- RandomError is mapped to ServerError 6
+      -- RandomError is mapped to ServerError 0. 
       flip shouldThrow (isServerError 0) $
         runApp $ catchMatch (matchException matchRandom <=< matchDefaultErrors) $ throwM RandomError
 
