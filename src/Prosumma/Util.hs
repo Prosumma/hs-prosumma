@@ -4,6 +4,8 @@ module Prosumma.Util (
   firstJusts,
   fmapMaybeM,
   makeProsummaLenses,
+  whenNothing,
+  whenNothingM,
   (??),
   (<->),
   (<#>),
@@ -64,6 +66,12 @@ also f a = f a >> return a
 fmapMaybeM :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeM _ Nothing = return Nothing
 fmapMaybeM f (Just x) = f x <&> Just
+
+whenNothing :: Monad m => Maybe a -> m a -> m a
+whenNothing cond action = maybe action return cond
+
+whenNothingM :: Monad m => m (Maybe a) -> m a -> m a
+whenNothingM cond action = cond >>= maybe action return
 
 -- | Shortcut to create a pair.
 (<->) :: a -> b -> (a, b)
