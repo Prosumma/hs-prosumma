@@ -8,7 +8,7 @@ Unfortunately env-extra is incompatible with the extra library
 (https://hackage.haskell.org/package/extra), which I also use,
 so I had to copy the relevant functions here.
 -}
-module Prosumma.Environment (envRead, envMaybe, envJust) where
+module Prosumma.Environment (envRead, envMaybe) where
 
 import Control.Monad.IO.Class
 import Data.Maybe
@@ -18,9 +18,6 @@ import Data.Text.Read
 import Prosumma.Util
 import RIO hiding (fromRight, Reader)
 import System.Environment
-
-envJust :: (MonadIO m, IsString a) => Text -> m a
-envJust = fromJust <<$>> envMaybe
 
 envMaybe :: (MonadIO m, IsString a) => Text -> m (Maybe a)
 envMaybe key = liftIO $ fromString <<$>> lookupEnv (unpack key)
