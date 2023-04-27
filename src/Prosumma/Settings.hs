@@ -18,9 +18,7 @@ settingS :: WriteSetting
 settingS value = S <$> value ^. (field @"s")
 
 settingN :: WriteSetting 
-settingN value = case value ^. (field @"n") >>= maybeFromRight . decimal of
-  Just (n, _rem) -> Just (N n)
-  Nothing -> Nothing
+settingN value = value ^. (field @"n") >>= maybeFromRight . decimal <&> N . fst
 
 settingB :: WriteSetting
 settingB value = B <$> value ^. (field @"bool")
