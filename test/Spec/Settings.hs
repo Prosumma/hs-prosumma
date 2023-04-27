@@ -30,7 +30,7 @@ newRow key value = let attributeKey = newAttributeValue & (field @"s") ?~ key in
 testSettings :: Spec
 testSettings = do
   describe "settings" $ do
-    it "transforms valid settings" $ do
+    it "transforms valid settings into Hashmap Text Setting" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
       let row1 = newRow "name" stringAttribute
       let integerAttribute = newAttributeValue & (field @"n") ?~ "22"
@@ -55,3 +55,10 @@ testSettings = do
       let rows = [row1, row2]
       let expected = Settings "Vina" 22
       readSettings rows `shouldBe` Just expected 
+    it "fails to initialize a record given invalid data" $ do
+      let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
+      let row1 = newRow "name" stringAttribute
+      let integerAttribute = newAttributeValue
+      let row2 = newRow "age" integerAttribute
+      let rows = [row1, row2]
+      readSettings rows `shouldBe` Nothing 
