@@ -4,7 +4,7 @@ module Prosumma.Settings (settings, lookupSetting, readSettings, Setting(..), Re
 
 import Amazonka.DynamoDB
 import Data.Generics.Product
-import Data.Text.Read
+import Prosumma.Textual
 import Prosumma.Util
 import RIO
 
@@ -18,7 +18,7 @@ settingS :: WriteSetting
 settingS value = S <$> value ^. (field @"s")
 
 settingN :: WriteSetting 
-settingN value = value ^. (field @"n") >>= maybeFromRight . decimal <&> N . fst
+settingN value = N <$> (value ^. (field @"n") >>= fromText)
 
 settingB :: WriteSetting
 settingB value = B <$> value ^. (field @"bool")
@@ -48,10 +48,12 @@ instance ReadSetting Text where
 
 instance ReadSetting Integer where
   readSetting (N integer) = Just integer
+  readSetting (S text) = fromText text 
   readSetting _other = Nothing
 
 instance ReadSetting Int where
   readSetting (N integer) = readMaybe $ show integer
+  readSetting (S text) = fromText text 
   readSetting _other = Nothing
 
 instance ReadSetting Bool where

@@ -11,14 +11,29 @@ module Prosumma.Textual (
 import Data.Aeson.Types
 import Database.PostgreSQL.Simple.FromField
 import Data.String.Conversions
+import Data.Text.Read
+import Prosumma.Util
 import RIO
 import RIO.Partial
 import Text.Regex.TDFA
 import Text.Printf
+import RIO.Text
 
 class Textual a where
   fromText :: Text -> Maybe a
   toText :: a -> Text
+
+instance Textual Text where
+  fromText = Just 
+  toText = id
+
+instance Textual Integer where
+  fromText text = fst <$> maybeFromRight (decimal text)
+  toText = pack . show
+
+instance Textual Int where
+  fromText text = fst <$> maybeFromRight (decimal text)
+  toText = pack . show
 
 -- | Unsafely converts from `Text` to a `Textual`.
 --
