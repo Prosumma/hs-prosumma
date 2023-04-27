@@ -24,9 +24,8 @@ readSettings items = Settings <$> lookup "name" <*> lookup "age"
     lookup key = lookupSetting mapped key
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
-newRow key value = HM.union
-  (HM.singleton "name" (newAttributeValue & (field @"s") ?~ key))
-  (HM.singleton "value" value)
+newRow key value = let attributeKey = newAttributeValue & (field @"s") ?~ key in
+  HM.singleton "name" attributeKey <> HM.singleton "value" value
 
 testSettings :: Spec
 testSettings = do
@@ -37,7 +36,7 @@ testSettings = do
       let integerAttribute = newAttributeValue & (field @"n") ?~ "22"
       let row2 = newRow "age" integerAttribute
       let rows = [row1, row2]
-      let expected = HM.union (HM.singleton "name" (S "Vina")) (HM.singleton "age" (N 22))
+      let expected = HM.singleton "name" (S "Vina") <> HM.singleton "age" (N 22)
       settings rows `shouldBe` expected
     it "skips invalid settings" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
