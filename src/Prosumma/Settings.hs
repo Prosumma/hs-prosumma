@@ -10,7 +10,7 @@ import RIO
 
 import qualified RIO.HashMap as HM
 
-data Setting = S !Text | N !Integer deriving (Eq, Show)
+data Setting = S !Text | N !Integer | B !Bool deriving (Eq, Show)
 
 type WriteSetting = AttributeValue -> Maybe Setting
 
@@ -22,8 +22,11 @@ settingN value = case value ^. (field @"n") >>= maybeFromRight . decimal of
   Just (n, _rem) -> Just (N n)
   Nothing -> Nothing
 
+settingB :: WriteSetting
+settingB value = B <$> value ^. (field @"bool")
+
 setting :: WriteSetting 
-setting value = firstJusts $ map (\f -> f value) [settingS, settingN]
+setting value = firstJusts $ map (\f -> f value) [settingS, settingN, settingB]
 
 -- | Converts a @[HashMap Text AttributeValue]@ to @[HashMap Text Setting]@.
 --
@@ -47,6 +50,10 @@ instance ReadSetting Text where
 
 instance ReadSetting Integer where
   readSetting (N integer) = Just integer
+  readSetting _other = Nothing
+
+instance ReadSetting Bool where
+  readSetting (B bool) = Just bool
   readSetting _other = Nothing
 
 -- | Looks up a value in the hashmap and converts it to the target type.
