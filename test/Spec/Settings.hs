@@ -13,7 +13,7 @@ import qualified RIO.HashMap as HM
 
 data Settings = Settings {
   stgsName :: !Text,
-  stgsAge  :: !Integer,
+  stgsAge  :: !Int,
   stgsGood :: !Bool
 } deriving (Eq, Show)
 

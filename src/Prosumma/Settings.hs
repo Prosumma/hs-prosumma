@@ -52,6 +52,10 @@ instance ReadSetting Integer where
   readSetting (N integer) = Just integer
   readSetting _other = Nothing
 
+instance ReadSetting Int where
+  readSetting (N integer) = readMaybe $ show integer
+  readSetting _other = Nothing
+
 instance ReadSetting Bool where
   readSetting (B bool) = Just bool
   readSetting _other = Nothing
