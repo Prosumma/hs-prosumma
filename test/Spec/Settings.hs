@@ -16,12 +16,8 @@ data Settings = Settings {
   stgsAge :: !Integer
 } deriving (Eq, Show)
 
-readSettings :: [HashMap Text AttributeValue] -> Maybe Settings
-readSettings items = Settings <$> lookup "name" <*> lookup "age" 
-  where
-    mapped = settings items
-    lookup :: ReadSetting a => Text -> Maybe a
-    lookup key = lookupSetting mapped key
+readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
+readPersonSettings items = readSettings items $ \lookup -> Settings <$> lookup "name" <*> lookup "age" 
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
 newRow key value = let attributeKey = newAttributeValue & (field @"s") ?~ key in
@@ -54,11 +50,11 @@ testSettings = do
       let row2 = newRow "age" integerAttribute
       let rows = [row1, row2]
       let expected = Settings "Vina" 22
-      readSettings rows `shouldBe` Just expected 
+      readPersonSettings rows `shouldBe` Just expected 
     it "fails to initialize a record given invalid data" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
       let row1 = newRow "name" stringAttribute
       let integerAttribute = newAttributeValue
       let row2 = newRow "age" integerAttribute
       let rows = [row1, row2]
-      readSettings rows `shouldBe` Nothing 
+      readPersonSettings rows `shouldBe` Nothing 

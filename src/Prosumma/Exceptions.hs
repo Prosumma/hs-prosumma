@@ -63,8 +63,7 @@ throwMatch match e = do
 -- | Attempts to perform `action`. If an exception is thrown, it uses `throwMatch` to attempt to match and rethrow
 -- the exception if needed.
 --
--- This is typically used to match underlying errors -- often `SqlError` instances thrown by database operations -- onto
--- `ServerError` instances required by Servant.
+-- This is typically used to match underlying errors -- often `SqlError` instances thrown by database operations -- onto `ServerError` instances required by Servant.
 --
 -- > defaultSqlToServerErrors :: MatchException SomeException SomeException
 -- > defaultSqlToServerErrors = matchException $ matchNoApp >=> matchNoUsr
