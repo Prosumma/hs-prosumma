@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds, TypeApplications #-}
 
-module Prosumma.Settings (settings, Setting(..)) where
+module Prosumma.Settings (settings, lookupSetting, Setting(..), ReadSetting(..)) where
 
 import Amazonka.DynamoDB
 import Data.Generics.Product
@@ -30,3 +30,17 @@ settings (row:rows) = case HM.lookup "name" row >>= setting of
     Just v -> HM.union (HM.singleton key v) (settings rows)
     Nothing -> settings rows
   _other -> settings rows
+
+class ReadSetting a where
+  readSetting :: Setting -> Maybe a
+
+instance ReadSetting Text where
+  readSetting (S text) = Just text
+  readSetting _other = Nothing
+
+instance ReadSetting Integer where
+  readSetting (N integer) = Just integer
+  readSetting _other = Nothing
+
+lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Maybe a
+lookupSetting m key = HM.lookup key m >>= readSetting
