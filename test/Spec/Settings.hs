@@ -13,11 +13,13 @@ import qualified RIO.HashMap as HM
 
 data Settings = Settings {
   stgsName :: !Text,
-  stgsAge :: !Integer
+  stgsAge  :: !Integer,
+  stgsGood :: !Bool
 } deriving (Eq, Show)
 
 readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
-readPersonSettings items = readSettings items $ \lookup -> Settings <$> lookup "name" <*> lookup "age" 
+readPersonSettings items = readSettings items $ \lookup ->
+  Settings <$> lookup "name" <*> lookup "age" <*> lookup "good"
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
 newRow key value = let attributeKey = newAttributeValue & (field @"s") ?~ key in
@@ -31,8 +33,10 @@ testSettings = do
       let row1 = newRow "name" stringAttribute
       let integerAttribute = newAttributeValue & (field @"n") ?~ "22"
       let row2 = newRow "age" integerAttribute
-      let rows = [row1, row2]
-      let expected = HM.singleton "name" (S "Vina") <> HM.singleton "age" (N 22)
+      let boolAttribute = newAttributeValue & (field @"bool") ?~ False
+      let row3 = newRow "good" boolAttribute
+      let rows = [row1, row2, row3]
+      let expected = HM.singleton "name" (S "Vina") <> HM.singleton "age" (N 22) <> HM.singleton "good" (B False)
       settings rows `shouldBe` expected
     it "skips invalid settings" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
@@ -48,8 +52,10 @@ testSettings = do
       let row1 = newRow "name" stringAttribute
       let integerAttribute = newAttributeValue & (field @"n") ?~ "22"
       let row2 = newRow "age" integerAttribute
-      let rows = [row1, row2]
-      let expected = Settings "Vina" 22
+      let boolAttribute = newAttributeValue & (field @"bool") ?~ False
+      let row3 = newRow "good" boolAttribute
+      let rows = [row1, row2, row3]
+      let expected = Settings "Vina" 22 False
       readPersonSettings rows `shouldBe` Just expected 
     it "fails to initialize a record given invalid data" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
