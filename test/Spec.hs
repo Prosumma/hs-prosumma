@@ -1,5 +1,6 @@
 import RIO
 import Spec.Exceptions
+import Spec.Settings
 import Spec.Textual
 import Spec.Util
 import Test.Hspec
@@ -9,3 +10,4 @@ main = hspec $ do
   testExceptions
   testTextual
   testUtil
+  testSettings

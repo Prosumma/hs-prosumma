@@ -45,6 +45,7 @@ extra-deps:
   subdirs:
   - lib/amazonka
   - lib/amazonka-core
+  - lib/services/amazonka-dynamodb
   - lib/services/amazonka-sts
 - github: prosumma/haskellpg
   commit: fd371be5a21d6f2c94ca9dcd70322e3b52837a44     

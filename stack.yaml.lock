@@ -31,6 +31,19 @@ packages:
     subdir: lib/amazonka-core
     url: https://github.com/brendanhay/amazonka/archive/0ccede621e56fb6f240e4850e205cde82d0e4a4b.tar.gz
 - completed:
+    name: amazonka-dynamodb
+    pantry-tree:
+      sha256: 55c99ea1e0e46603606160c918ef606117a85f482f106ede26e4fc85a619b198
+      size: 24229
+    sha256: a7b386bbc8c580b1683b69ea406cb66416c2a440d6540fe50be6eff8917c0d31
+    size: 26670949
+    subdir: lib/services/amazonka-dynamodb
+    url: https://github.com/brendanhay/amazonka/archive/0ccede621e56fb6f240e4850e205cde82d0e4a4b.tar.gz
+    version: '2.0'
+  original:
+    subdir: lib/services/amazonka-dynamodb
+    url: https://github.com/brendanhay/amazonka/archive/0ccede621e56fb6f240e4850e205cde82d0e4a4b.tar.gz
+- completed:
     name: amazonka-sts
     pantry-tree:
       sha256: cab234646c792a272ac2d7011c34fe06902a466900d953c85ffff4e3faaa1378

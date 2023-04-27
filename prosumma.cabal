@@ -31,6 +31,7 @@ library
       Prosumma.Exceptions
       Prosumma.PG
       Prosumma.Servant
+      Prosumma.Settings
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Util
@@ -47,6 +48,7 @@ library
       aeson
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
+    , amazonka-dynamodb >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default
@@ -80,6 +82,7 @@ executable prosumma-exe
       aeson
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
+    , amazonka-dynamodb >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default
@@ -104,6 +107,7 @@ test-suite prosumma-test
   main-is: Spec.hs
   other-modules:
       Spec.Exceptions
+      Spec.Settings
       Spec.Textual
       Spec.Util
       Paths_prosumma
@@ -118,6 +122,7 @@ test-suite prosumma-test
       aeson
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
+    , amazonka-dynamodb >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default

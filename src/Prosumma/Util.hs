@@ -3,6 +3,7 @@ module Prosumma.Util (
   firstJust,
   firstJusts,
   fmapMaybeM,
+  maybeFromRight,
   makeProsummaLenses,
   whenNothing,
   whenNothingM,
@@ -66,6 +67,10 @@ also f a = f a >> return a
 fmapMaybeM :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeM _ Nothing = return Nothing
 fmapMaybeM f (Just x) = f x <&> Just
+
+maybeFromRight :: Either b a -> Maybe a
+maybeFromRight (Right a) = Just a
+maybeFromRight _left = Nothing
 
 whenNothing :: Monad m => Maybe a -> m a -> m a
 whenNothing cond action = maybe action return cond
