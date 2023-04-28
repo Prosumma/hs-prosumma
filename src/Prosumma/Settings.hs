@@ -1,12 +1,23 @@
 {-# LANGUAGE DataKinds, RankNTypes, TypeApplications #-}
 
-module Prosumma.Settings (settings, lookupSetting, readSettings, Setting(..), ReadSetting(..), WriteSetting) where
+module Prosumma.Settings (
+  settings,
+  lookupErrorIncorrectType,
+  lookupErrorKeyNotFound,
+  lookupSetting,
+  readSettings,
+  Setting(..),
+  ReadSetting(..),
+  WriteSetting
+) where
 
 import Amazonka.DynamoDB
+import Control.Monad.Except
 import Data.Generics.Product
 import Prosumma.Textual
 import Prosumma.Util
 import RIO
+import Text.Printf
 
 import qualified RIO.HashMap as HM
 
@@ -63,11 +74,21 @@ instance ReadSetting Bool where
 instance ReadSetting s => ReadSetting (Maybe s) where
   readSetting = Just . readSetting
 
+lookupErrorKeyNotFound :: String
+lookupErrorKeyNotFound = "The key '%s' was not found."
+
+lookupErrorIncorrectType :: String
+lookupErrorIncorrectType = "The key '%s' was found but was not the correct type."
+
 -- | Looks up a value in the hashmap and converts it to the target type.
 --
 -- This is useful for initializing types from DynamoDB tables.
-lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Maybe a
-lookupSetting m key = HM.lookup key m >>= readSetting
+lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Either String a 
+lookupSetting m key = case HM.lookup key m of 
+  Just value -> case readSetting value of
+    Just a -> return a
+    Nothing -> throwError $ printf lookupErrorIncorrectType key 
+  Nothing -> throwError $ printf lookupErrorKeyNotFound key 
 
 -- | Helper function to read settings types from DynamoDB tables.
 --
@@ -79,9 +100,9 @@ lookupSetting m key = HM.lookup key m >>= readSetting
 -- > readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
 -- > readPersonSettings items = readSettings items $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
-readSettings :: [HashMap Text AttributeValue] -> ((forall s. ReadSetting s => Text -> Maybe s) -> Maybe a) -> Maybe a
+readSettings :: [HashMap Text AttributeValue] -> ((forall s. ReadSetting s => Text -> Either String s) -> Either String a) -> Either String a 
 readSettings items make = make lookup
   where
     hm = settings items
-    lookup :: ReadSetting s => Text -> Maybe s
+    lookup :: ReadSetting s => Text -> Either String s 
     lookup = lookupSetting hm

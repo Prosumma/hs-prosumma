@@ -9,6 +9,7 @@ import Prosumma.Settings
 import Prosumma.Util
 import RIO
 import Test.Hspec
+import Text.Printf
 
 import qualified RIO.HashMap as HM
 
@@ -20,7 +21,7 @@ data Settings = Settings {
   stgsWho  :: !Text 
 } deriving (Eq, Show)
 
-readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
+readPersonSettings :: [HashMap Text AttributeValue] -> Either String Settings
 readPersonSettings items = readSettings items $ \lookup ->
   Settings
     <$> lookup "name"
@@ -64,11 +65,12 @@ testSettings = do
       let row3 = newRow "good" boolAttribute
       let rows = [row1, row2, row3]
       let expected = Settings "Vina" 22 False Nothing "Greg" 
-      readPersonSettings rows `shouldBe` Just expected 
+      readPersonSettings rows `shouldBe` Right expected 
     it "fails to initialize a record given invalid data" $ do
       let stringAttribute = newAttributeValue & (field @"s") ?~ "Vina"
       let row1 = newRow "name" stringAttribute
       let integerAttribute = newAttributeValue
-      let row2 = newRow "age" integerAttribute
+      let ageName = "age"
+      let row2 = newRow ageName integerAttribute
       let rows = [row1, row2]
-      readPersonSettings rows `shouldBe` Nothing 
+      readPersonSettings rows `shouldBe` Left (printf lookupErrorKeyNotFound ageName) 
