@@ -8,6 +8,7 @@ module Prosumma.Util (
   whenNothing,
   whenNothingM,
   (??),
+  (??~),
   (<->),
   (<#>),
   (<=>),
@@ -39,6 +40,11 @@ infixl 1 ??
 -- The above results in `Just 7`.
 (??) :: Maybe a -> Maybe a -> Maybe a
 a ?? b = firstJust a b
+
+infixl 1 ??~
+
+(??~) :: Maybe a -> a -> Maybe a
+a ??~ b = a ?? Just b
 
 -- | Selects the first of a list of Maybes.
 -- 

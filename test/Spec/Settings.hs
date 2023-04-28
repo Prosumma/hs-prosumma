@@ -27,7 +27,7 @@ readPersonSettings items = readSettings items $ \lookup ->
     <*> lookup "age"
     <*> lookup "good"
     <*> require (lookup "wut")
-    <*> (lookup "who" ?? Just "Greg")
+    <*> (lookup "who" ??~ "Greg")
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
 newRow key value = let attributeKey = newAttributeValue & (field @"s") ?~ key in
