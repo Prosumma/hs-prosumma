@@ -33,8 +33,7 @@ coalesce :: (Foldable f, Coalesce a) => a -> f a -> a
 coalesce = foldr (??)
 
 instance Coalesce (Maybe a) where
-  j@(Just _j) ?? _other = j
-  Nothing ?? other = other
+  (??) = (<|>)
 
 instance Coalesce (Either e a) where
   r@(Right _r) ?? _other = r
