@@ -1,13 +1,12 @@
 module Prosumma.Util (
   also,
-  firstJust,
-  firstJusts,
+  coalesce,
   fmapMaybeM,
   maybeFromRight,
   makeProsummaLenses,
   whenNothing,
   whenNothingM,
-  (??),
+  Coalesce(..),
   (??~),
   (<->),
   (<#>),
@@ -17,6 +16,7 @@ module Prosumma.Util (
 ) where
 
 import Control.Lens hiding ((??), (.~))
+import Data.Foldable
 import Language.Haskell.TH
 import RIO
 import RIO.Map (singleton)
@@ -24,38 +24,27 @@ import RIO.Map (singleton)
 makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
 
-infixl 1 `firstJust`
-
-firstJust :: Maybe a -> Maybe a -> Maybe a
-firstJust a b = firstJusts [a, b]
+class Coalesce a where
+  (??) :: a -> a -> a 
 
 infixl 1 ??
 
--- | Selects the first `Just`
---
--- > let a = Nothing
--- > let b = Just 7
--- > a ?? b
---
--- The above results in `Just 7`.
-(??) :: Maybe a -> Maybe a -> Maybe a
-a ?? b = firstJust a b
+coalesce :: (Foldable f, Coalesce a) => a -> f a -> a
+coalesce = foldr (??)
+
+instance Coalesce (Maybe a) where
+  j@(Just _j) ?? _other = j
+  Nothing ?? other = other
+
+instance Coalesce (Either e a) where
+  r@(Right _r) ?? _other = r
+  (Left _e) ?? r@(Right _r) = r
+  e1@(Left _e1) ?? (Left _e2) = e1
 
 infixl 1 ??~
 
-(??~) :: Maybe a -> a -> Maybe a
-a ??~ b = a ?? Just b
-
--- | Selects the first of a list of Maybes.
--- 
--- > firstJusts [Nothing, Just 7, Just 5]
---
--- The above results in `Just 7`.
---
--- This is just `msum` for `Maybe` with a
--- prettier, more explicit name.
-firstJusts :: Foldable f => f (Maybe a) -> Maybe a
-firstJusts = msum
+(??~) :: (Monad m, Coalesce (m a)) => m a -> a -> m a 
+a ??~ b = a ?? return b
 
 -- | Do something as a side effect.
 --

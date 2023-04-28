@@ -24,7 +24,7 @@ settingB :: WriteSetting
 settingB value = B <$> value ^. (field @"bool")
 
 setting :: WriteSetting 
-setting value = firstJusts $ map (\f -> f value) [settingS, settingN, settingB]
+setting value = coalesce Nothing $ map (\f -> f value) [settingS, settingN, settingB]
 
 -- | Converts a @[HashMap Text AttributeValue]@ to @[HashMap Text Setting]@.
 --
