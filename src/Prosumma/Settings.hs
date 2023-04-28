@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds, RankNTypes, TypeApplications #-}
 
-module Prosumma.Settings (settings, lookupSetting, readSettings, require, Setting(..), ReadSetting(..), WriteSetting) where
+module Prosumma.Settings (settings, lookupSetting, readSettings, Setting(..), ReadSetting(..), WriteSetting) where
 
 import Amazonka.DynamoDB
 import Data.Generics.Product
@@ -85,13 +85,3 @@ readSettings items make = make lookup
     hm = settings items
     lookup :: ReadSetting s => Text -> Maybe s
     lookup = lookupSetting hm
-
--- | Used to convert @Nothing@ to @Just Nothing@.
---
--- This is useful for the @lookup@ function of @readSettings@ when working with @Maybe@.
--- If the underlying key is not present, @lookup@ will return @Nothing@, causing the entire
--- expression to return @Nothing@. However, when we're trying to initialize a field of type
--- @Maybe a@, it's ok for the key to be missing. @require@ solves this problem. See
--- the unit tests for an example.
-require :: Maybe (Maybe a) -> Maybe (Maybe a) 
-require a = a ?? Just Nothing 

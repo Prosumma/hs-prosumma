@@ -26,7 +26,7 @@ readPersonSettings items = readSettings items $ \lookup ->
     <$> lookup "name"
     <*> lookup "age"
     <*> lookup "good"
-    <*> require (lookup "wut")
+    <*> (lookup "wut" ??~ Nothing)
     <*> (lookup "who" ??~ "Greg")
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue

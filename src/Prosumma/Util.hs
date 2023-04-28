@@ -43,8 +43,8 @@ instance Coalesce (Either e a) where
 
 infixl 1 ??~
 
-(??~) :: (Monad m, Coalesce (m a)) => m a -> a -> m a 
-a ??~ b = a ?? return b
+(??~) :: (Applicative m, Coalesce (m a)) => m a -> a -> m a 
+a ??~ b = a ?? pure b
 
 -- | Do something as a side effect.
 --
