@@ -2,6 +2,7 @@ module Prosumma.Util (
   also,
   coalesce,
   fmapMaybeM,
+  fromTextReader,
   hush,
   makeProsummaLenses,
   whenNothing,
@@ -17,9 +18,10 @@ module Prosumma.Util (
 
 import Control.Lens hiding ((??), (.~))
 import Data.Either.Extra
+import Data.Text.Read
 import Data.Foldable
 import Language.Haskell.TH
-import RIO
+import RIO hiding (Reader)
 import RIO.Map (singleton)
 
 hush :: Either e a -> Maybe a
@@ -71,6 +73,9 @@ whenNothing cond action = maybe action return cond
 
 whenNothingM :: Monad m => m (Maybe a) -> m a -> m a
 whenNothingM cond action = cond >>= maybe action return
+
+fromTextReader :: Reader a -> Text -> Maybe a
+fromTextReader reader text = hush (reader text) <&> fst
 
 -- | Shortcut to create a pair.
 (<->) :: a -> b -> (a, b)

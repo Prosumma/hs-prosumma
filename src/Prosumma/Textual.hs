@@ -13,7 +13,7 @@ import Data.String.Conversions
 import Data.Text.Read
 import Database.PostgreSQL.Simple.FromField
 import Prosumma.Util
-import RIO
+import RIO hiding (Reader)
 import RIO.Partial
 import RIO.Text
 import Text.Printf
@@ -28,11 +28,11 @@ instance Textual Text where
   toText = id
 
 instance Textual Integer where
-  fromText text = fst <$> hush (decimal text)
+  fromText = fromTextReader decimal 
   toText = pack . show
 
 instance Textual Int where
-  fromText text = fst <$> hush (decimal text)
+  fromText = fromTextReader decimal 
   toText = pack . show
 
 -- | Unsafely converts from `Text` to a `Textual`.
