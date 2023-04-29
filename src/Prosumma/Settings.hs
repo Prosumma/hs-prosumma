@@ -14,6 +14,7 @@ module Prosumma.Settings (
 import Amazonka.DynamoDB
 import Control.Monad.Except
 import Data.Generics.Product
+import Data.Either.Extra
 import Prosumma.Textual
 import Prosumma.Util
 import RIO
@@ -83,12 +84,12 @@ lookupErrorIncorrectType = "The key '%s' was found but was not the correct type.
 -- | Looks up a value in the hashmap and converts it to the target type.
 --
 -- This is useful for initializing types from DynamoDB tables.
-lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Either String a 
-lookupSetting m key = case HM.lookup key m of 
-  Just value -> case readSetting value of
-    Just a -> return a
-    Nothing -> throwError $ printf lookupErrorIncorrectType key 
-  Nothing -> throwError $ printf lookupErrorKeyNotFound key 
+lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Either String a
+lookupSetting m key = maybeToEither keyNotFound setting >>= maybeToEither incorrectType . readSetting
+  where
+    setting = HM.lookup key m
+    keyNotFound = printf lookupErrorKeyNotFound key
+    incorrectType = printf lookupErrorIncorrectType key
 
 -- | Helper function to read settings types from DynamoDB tables.
 --
