@@ -11,7 +11,6 @@ so I had to copy the relevant functions here.
 module Prosumma.Environment (envRead, envMaybe, envString, envValue, MissingEnvError(..)) where
 
 import Control.Monad.IO.Class
-import Data.Either.Extra
 import Data.Maybe
 import Data.String
 import Data.Text
