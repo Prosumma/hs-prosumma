@@ -11,12 +11,13 @@ so I had to copy the relevant functions here.
 module Prosumma.Environment (envRead, envMaybe, envString, envValue, MissingEnvError(..)) where
 
 import Control.Monad.IO.Class
+import Data.Either.Extra
 import Data.Maybe
 import Data.String
 import Data.Text
 import Data.Text.Read
 import Prosumma.Util
-import RIO hiding (fromRight, Reader)
+import RIO hiding (Reader)
 import System.Environment
 
 newtype MissingEnvError = MissingEnvError Text deriving (Show)
@@ -46,7 +47,4 @@ envMaybe :: (MonadIO m, IsString a) => Text -> m (Maybe a)
 envMaybe key = liftIO $ fromString <<$>> lookupEnv (unpack key)
 
 envRead :: (MonadIO m) => Reader a -> Text -> m (Maybe a)
-envRead r = fmap (((fmap fst . fromRight) . r) =<<) . envMaybe
-
-fromRight :: Either a b -> Maybe b
-fromRight = either (const Nothing) Just
+envRead r = fmap (((fmap fst . hush) . r) =<<) . envMaybe

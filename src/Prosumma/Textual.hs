@@ -9,15 +9,15 @@ module Prosumma.Textual (
 ) where
 
 import Data.Aeson.Types
-import Database.PostgreSQL.Simple.FromField
 import Data.String.Conversions
 import Data.Text.Read
+import Database.PostgreSQL.Simple.FromField
 import Prosumma.Util
 import RIO
 import RIO.Partial
-import Text.Regex.TDFA
-import Text.Printf
 import RIO.Text
+import Text.Printf
+import Text.Regex.TDFA
 
 class Textual a where
   fromText :: Text -> Maybe a
@@ -28,11 +28,11 @@ instance Textual Text where
   toText = id
 
 instance Textual Integer where
-  fromText text = fst <$> maybeFromRight (decimal text)
+  fromText text = fst <$> hush (decimal text)
   toText = pack . show
 
 instance Textual Int where
-  fromText text = fst <$> maybeFromRight (decimal text)
+  fromText text = fst <$> hush (decimal text)
   toText = pack . show
 
 -- | Unsafely converts from `Text` to a `Textual`.

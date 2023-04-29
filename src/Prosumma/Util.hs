@@ -2,7 +2,7 @@ module Prosumma.Util (
   also,
   coalesce,
   fmapMaybeM,
-  maybeFromRight,
+  hush,
   makeProsummaLenses,
   whenNothing,
   whenNothingM,
@@ -16,10 +16,14 @@ module Prosumma.Util (
 ) where
 
 import Control.Lens hiding ((??), (.~))
+import Data.Either.Extra
 import Data.Foldable
 import Language.Haskell.TH
 import RIO
 import RIO.Map (singleton)
+
+hush :: Either e a -> Maybe a
+hush = eitherToMaybe
 
 makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
@@ -61,10 +65,6 @@ also f a = f a >> return a
 fmapMaybeM :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
 fmapMaybeM _ Nothing = return Nothing
 fmapMaybeM f (Just x) = f x <&> Just
-
-maybeFromRight :: Either b a -> Maybe a
-maybeFromRight (Right a) = Just a
-maybeFromRight _left = Nothing
 
 whenNothing :: Monad m => Maybe a -> m a -> m a
 whenNothing cond action = maybe action return cond
