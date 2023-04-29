@@ -44,16 +44,13 @@ setting value = coalesce Nothing $ map (\f -> f value) [settingS, settingN, sett
 -- as "name" and the other as "value". Anything else is ignored.
 settings :: [HashMap Text AttributeValue] -> HashMap Text Setting
 settings [] = mempty
-settings (row:rows) = 
-  case getSetting "name" of 
-    Just (S key) ->
-      case getSetting "value" of 
-        Just v -> HM.singleton key v <> settings rows
-        Nothing -> settings rows
-    _other ->
-      settings rows
+settings (row:rows) = getRow <> getRows 
   where
     getSetting key = HM.lookup key row >>= setting
+    getRows = settings rows
+    getRow = case getSetting "name" of 
+      Just (S key) -> fromMaybe mempty (getSetting "value" <&> HM.singleton key)
+      _other -> mempty 
 
 -- | A simple typeclass for converting a @Setting@ to its underlying type.
 class ReadSetting a where
