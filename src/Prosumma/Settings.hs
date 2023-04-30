@@ -6,8 +6,11 @@ module Prosumma.Settings (
   lookupErrorKeyNotFound,
   lookupSetting,
   readSettings,
-  Setting(..),
+  scanSettings,
   ReadSetting(..),
+  Setting(..),
+  SettingsReadException(..),
+  SettingsScanException(..),
   WriteSetting
 ) where
 
@@ -15,6 +18,7 @@ import Amazonka.DynamoDB
 import Control.Monad.Except
 import Data.Generics.Product
 import Data.Either.Extra
+import Prosumma.AWS
 import Prosumma.Textual
 import Prosumma.Util
 import RIO
@@ -109,3 +113,18 @@ readSettings items make = make lookup
     hm = settings items
     lookup :: ReadSetting s => Text -> Either String s 
     lookup = lookupSetting hm
+
+data SettingsScanException = SettingsScanException !Text !Int deriving (Show, Typeable) 
+instance Exception SettingsScanException
+
+data SettingsReadException = SettingsReadException !Text !String deriving (Show, Typeable)
+instance Exception SettingsReadException
+
+scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) =>
+  Text -> ([HashMap Text AttributeValue] -> Either String a) -> m a 
+scanSettings table make = do
+  response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table 
+  case make <$> response ^. (field @"items") of
+    Just (Right settings) -> return settings
+    Just (Left e) -> throwM $ SettingsReadException table e
+    Nothing -> throwM $ SettingsReadException table "The table is empty." 
