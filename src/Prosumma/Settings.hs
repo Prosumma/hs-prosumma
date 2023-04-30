@@ -11,6 +11,7 @@ module Prosumma.Settings (
   Setting(..),
   SettingsReadException(..),
   SettingsScanException(..),
+  TableItem,
   WriteSetting
 ) where
 
@@ -25,6 +26,8 @@ import RIO
 import Text.Printf
 
 import qualified RIO.HashMap as HM
+
+type TableItem = HashMap Text AttributeValue
 
 data Setting = S !Text | N !Integer | B !Bool deriving (Eq, Show)
 
@@ -46,7 +49,7 @@ setting value = coalesce Nothing $ map (\f -> f value) [settingS, settingN, sett
 --
 -- Each @HashMap@ in the array must consist of a pair, one of which is keyed
 -- as "name" and the other as "value". Anything else is ignored.
-settings :: [HashMap Text AttributeValue] -> HashMap Text Setting
+settings :: [TableItem] -> HashMap Text Setting
 settings [] = mempty
 settings (row:rows) = getRow <> getRows 
   where
@@ -110,7 +113,7 @@ lookupSetting m key = maybeToEither keyNotFound setting >>= maybeToEither incorr
 -- > readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
 -- > readPersonSettings items = readSettings items $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
-readSettings :: [HashMap Text AttributeValue] -> ((forall s. ReadSetting s => Text -> Either String s) -> Either String a) -> Either String a 
+readSettings :: [TableItem] -> ((forall s. ReadSetting s => Text -> Either String s) -> Either String a) -> Either String a 
 readSettings items make = make lookup
   where
     hm = settings items
@@ -123,11 +126,10 @@ instance Exception SettingsScanException
 data SettingsReadException = SettingsReadException !Text !String deriving (Show, Typeable)
 instance Exception SettingsReadException
 
-scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) =>
-  Text -> ([HashMap Text AttributeValue] -> Either String a) -> m a 
-scanSettings table make = do
+scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) => Text -> ([TableItem] -> Either String a) -> m a 
+scanSettings table read = do
   response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table 
-  case make <$> response ^. (field @"items") of
+  case read <$> response ^. (field @"items") of
     Just (Right settings) -> return settings
     Just (Left e) -> throwM $ SettingsReadException table e
     Nothing -> throwM $ SettingsReadException table "The table is empty." 
