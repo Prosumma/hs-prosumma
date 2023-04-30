@@ -8,6 +8,7 @@ module Prosumma.Settings (
   readSettings,
   scanSettings,
   ReadSetting(..),
+  ReadSettings,
   Setting(..),
   SettingsReadException(..),
   SettingsScanException(..),
@@ -103,6 +104,8 @@ lookupSetting m key = maybeToEither keyNotFound setting >>= maybeToEither incorr
     keyNotFound = printf lookupErrorKeyNotFound key
     incorrectType = printf lookupErrorIncorrectType key
 
+type ReadSettings s = ReadSetting s => Text -> Either String s
+
 -- | Helper function to read settings types from DynamoDB tables.
 --
 -- > data Settings {
@@ -113,7 +116,7 @@ lookupSetting m key = maybeToEither keyNotFound setting >>= maybeToEither incorr
 -- > readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
 -- > readPersonSettings items = readSettings items $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
-readSettings :: [TableItem] -> ((forall s. ReadSetting s => Text -> Either String s) -> Either String a) -> Either String a 
+readSettings :: [TableItem] -> ((forall s. ReadSettings s) -> Either String a) -> Either String a 
 readSettings items make = make lookup
   where
     hm = settings items
@@ -126,10 +129,11 @@ instance Exception SettingsScanException
 data SettingsReadException = SettingsReadException !Text !String deriving (Show, Typeable)
 instance Exception SettingsReadException
 
-scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) => Text -> ([TableItem] -> Either String a) -> m a 
+scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) => Text -> ((forall s. ReadSettings s) -> Either String a) -> m a 
 scanSettings table read = do
-  response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table 
-  case read <$> response ^. (field @"items") of
-    Just (Right settings) -> return settings
-    Just (Left e) -> throwM $ SettingsReadException table e
-    Nothing -> throwM $ SettingsReadException table "The table is empty." 
+  response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table
+  case response ^. (field @"items") of
+    Just items -> case read $ lookupSetting $ settings items of
+      Right s -> return s
+      Left e -> throwM $ SettingsReadException table e
+    Nothing -> throwM $ SettingsReadException table "The table is empty."
