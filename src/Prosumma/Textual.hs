@@ -27,6 +27,10 @@ instance Textual Text where
   fromText = Just 
   toText = id
 
+instance Textual ByteString where
+  fromText = Just . convertString 
+  toText = convertString
+
 instance Textual Integer where
   fromText = fromTextReader decimal 
   toText = pack . show

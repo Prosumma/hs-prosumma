@@ -64,6 +64,9 @@ instance ReadSetting Text where
   readSetting (S text) = Just text
   readSetting _other = Nothing
 
+instance ReadSetting ByteString where
+  readSetting = readSetting >=> fromText 
+
 instance ReadSetting Integer where
   readSetting (N integer) = Just integer
   readSetting (S text) = fromText text 
