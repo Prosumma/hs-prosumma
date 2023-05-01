@@ -103,11 +103,11 @@ k <=> v = singleton k v
 infixl 7 <=>
 
 (<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-f <<$>> a = fmap (f <$>) a
+(<<$>>) = fmap . fmap
 
 infixl 4 <<$>>
 
 (<<&>>) :: (Functor f, Functor g) => f (g a) -> (a -> b) -> f (g b)
-a <<&>> f = fmap (f <$>) a
+(<<&>>) = flip (fmap . fmap)
 
 infixl 1 <<&>>

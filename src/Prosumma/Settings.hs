@@ -117,11 +117,7 @@ type ReadSettings s = ReadSetting s => Text -> Either String s
 -- > readPersonSettings items = readSettings items $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
 readSettings :: [TableItem] -> ((forall s. ReadSettings s) -> Either String a) -> Either String a 
-readSettings items make = make lookup
-  where
-    hm = settings items
-    lookup :: ReadSetting s => Text -> Either String s 
-    lookup = lookupSetting hm
+readSettings items make = make $ lookupSetting (settings items) 
 
 data SettingsScanException = SettingsScanException !Text !Int deriving (Show, Typeable) 
 instance Exception SettingsScanException
@@ -130,10 +126,10 @@ data SettingsReadException = SettingsReadException !Text !String deriving (Show,
 instance Exception SettingsReadException
 
 scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) => Text -> ((forall s. ReadSettings s) -> Either String a) -> m a 
-scanSettings table read = do
+scanSettings table make = do
   response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table
   case response ^. (field @"items") of
-    Just items -> case read $ lookupSetting $ settings items of
+    Just items -> case make $ lookupSetting (settings items) of
       Right s -> return s
       Left e -> throwM $ SettingsReadException table e
     Nothing -> throwM $ SettingsReadException table "The table is empty."
