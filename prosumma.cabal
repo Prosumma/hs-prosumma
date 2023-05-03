@@ -35,6 +35,7 @@ library
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Util
+      Prosumma.Util.Environment
   other-modules:
       Paths_prosumma
   hs-source-dirs:
