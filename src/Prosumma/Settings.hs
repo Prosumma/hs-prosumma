@@ -9,11 +9,9 @@ module Prosumma.Settings (
   scanSettings,
   ReadSetting(..),
   ReadSettings,
-  Setting(..),
   SettingsReadException(..),
   SettingsScanException(..),
   TableItem,
-  WriteSetting
 ) where
 
 import Amazonka.DynamoDB
@@ -22,7 +20,6 @@ import Data.Generics.Product
 import Data.Either.Extra
 import Prosumma.AWS
 import Prosumma.Textual
-import Prosumma.Util
 import RIO
 import Text.Printf
 
@@ -30,39 +27,23 @@ import qualified RIO.HashMap as HM
 
 type TableItem = HashMap Text AttributeValue
 
-data Setting = S !Text | N !Integer | B !Bool deriving (Eq, Show)
-
-type WriteSetting = AttributeValue -> Maybe Setting
-
-settingS :: WriteSetting 
-settingS value = S <$> value ^. (field @"s")
-
-settingN :: WriteSetting 
-settingN value = N <$> (value ^. (field @"n") >>= fromText)
-
-settingB :: WriteSetting
-settingB value = B <$> value ^. (field @"bool")
-
-setting :: WriteSetting 
-setting value = coalesce Nothing $ map (\f -> f value) [settingS, settingN, settingB]
-
--- | Converts a @[HashMap Text AttributeValue]@ to @[HashMap Text Setting]@.
+-- | Converts a @[HashMap Text AttributeValue]@ to @HashMap Text AttributeValue@.
 --
 -- Each @HashMap@ in the array must consist of a pair, one of which is keyed
 -- as "name" and the other as "value". Anything else is ignored.
-settings :: [TableItem] -> HashMap Text Setting
+settings :: [TableItem] -> HashMap Text AttributeValue 
 settings [] = mempty
 settings (row:rows) = getRow <> getRows 
   where
-    getSetting key = HM.lookup key row >>= setting
+    getSetting key = HM.lookup key row
     getRows = settings rows
     getRow = case getSetting "name" of 
       Just (S key) -> fromMaybe mempty (getSetting "value" <&> HM.singleton key)
       _other -> mempty 
 
--- | A simple typeclass for converting a @Setting@ to its underlying type.
+-- | A simple typeclass for converting an @AttributeValue@ to its underlying type.
 class ReadSetting a where
-  readSetting :: Setting -> Maybe a
+  readSetting :: AttributeValue -> Maybe a
 
 instance ReadSetting Text where
   readSetting (S text) = Just text
@@ -72,17 +53,17 @@ instance ReadSetting ByteString where
   readSetting = readSetting >=> fromText 
 
 instance ReadSetting Integer where
-  readSetting (N integer) = Just integer
+  readSetting (N integer) = fromText integer 
   readSetting (S text) = fromText text 
   readSetting _other = Nothing
 
 instance ReadSetting Int where
-  readSetting (N integer) = readMaybe $ show integer
+  readSetting (N integer) = fromText integer 
   readSetting (S text) = fromText text 
   readSetting _other = Nothing
 
 instance ReadSetting Bool where
-  readSetting (B bool) = Just bool
+  readSetting (BOOL bool) = Just bool
   readSetting _other = Nothing
 
 instance ReadSetting s => ReadSetting (Maybe s) where
@@ -97,7 +78,7 @@ lookupErrorIncorrectType = "The key '%s' was found but was not the correct type.
 -- | Looks up a value in the hashmap and converts it to the target type.
 --
 -- This is useful for initializing types from DynamoDB tables.
-lookupSetting :: ReadSetting a => HashMap Text Setting -> Text -> Either String a
+lookupSetting :: ReadSetting a => HashMap Text AttributeValue -> Text -> Either String a
 lookupSetting m key = maybeToEither keyNotFound setting >>= maybeToEither incorrectType . readSetting
   where
     setting = HM.lookup key m
@@ -125,6 +106,10 @@ instance Exception SettingsScanException
 data SettingsReadException = SettingsReadException !Text !String deriving (Show, Typeable)
 instance Exception SettingsReadException
 
+-- | Helper function to read settings types directly from a DynamoDB table.
+--
+-- Unlike @readSettings@, this takes the name of the settings table and performs the call,
+-- throwing a @SettingsScanException@ if the table cannot be retrieved. 
 scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m) => Text -> ((forall s. ReadSettings s) -> Either String a) -> m a 
 scanSettings table make = do
   response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table

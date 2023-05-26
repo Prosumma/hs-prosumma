@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE DataKinds, FlexibleContexts, KindSignatures, RankNTypes #-}
 
 module Prosumma.Servant (
   defaultExceptionHandler,
@@ -17,6 +17,7 @@ module Prosumma.Servant (
 ) where
 
 import Control.Monad.Error.Class
+import Data.Kind
 import RIO hiding (Handler)
 import Servant
 
@@ -57,14 +58,20 @@ runApp handler transform state app = liftIO $ runRIO state $ catch (Right <$> tr
 mapApp :: ServerExceptionHandler s a -> StateTransform s a -> s -> RIO s a -> Handler a
 mapApp handler transform state app = runApp handler transform state app >>= liftEither 
 
-runApplication :: HasServer api '[] => (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplication ::
+  forall (api :: Type) s.
+  HasServer api '[] =>
+  (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler transform proxy api state = serve proxy $ hoistServer proxy (mapApp handler transform state) api
 
-runApplicationWithLogging :: (HasLogFunc s, HasServer api '[]) => IO LogOptions -> Proxy api -> ServerT api (RIO s) -> s -> Application 
+runApplicationWithLogging ::
+  forall (api :: Type) s.
+  (HasLogFunc s, HasServer api '[]) => 
+  IO LogOptions -> Proxy api -> ServerT api (RIO s) -> s -> Application 
 runApplicationWithLogging initLogging = runApplication loggingExceptionHandler (withInitLogging initLogging)
 
-runApplicationWithDefaultLogging :: (HasLogFunc s, HasServer api '[]) => Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithDefaultLogging :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[]) => Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplicationWithDefaultLogging = runApplicationWithLogging initDefaultLogging 
 
-runApplicationWithoutLogging :: HasServer api '[] => Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithoutLogging :: forall (api :: Type) s. HasServer api '[] => Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplicationWithoutLogging = runApplication defaultExceptionHandler id
