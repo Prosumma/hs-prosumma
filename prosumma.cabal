@@ -27,6 +27,7 @@ library
   exposed-modules:
       Prosumma
       Prosumma.AWS
+      Prosumma.Crypto
       Prosumma.Environment
       Prosumma.Exceptions
       Prosumma.PG
@@ -50,6 +51,7 @@ library
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
     , amazonka-dynamodb >=2.0 && <3
+    , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default
@@ -67,6 +69,7 @@ library
     , string-conversions
     , template-haskell
     , text
+    , triplesec
   default-language: Haskell2010
 
 executable prosumma-exe
@@ -85,6 +88,7 @@ executable prosumma-exe
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
     , amazonka-dynamodb >=2.0 && <3
+    , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default
@@ -103,6 +107,7 @@ executable prosumma-exe
     , string-conversions
     , template-haskell
     , text
+    , triplesec
   default-language: Haskell2010
 
 test-suite prosumma-test
@@ -126,6 +131,7 @@ test-suite prosumma-test
     , amazonka >=2.0 && <3
     , amazonka-core >=2.0 && <3
     , amazonka-dynamodb >=2.0 && <3
+    , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
     , data-default
@@ -146,4 +152,5 @@ test-suite prosumma-test
     , string-conversions
     , template-haskell
     , text
+    , triplesec
   default-language: Haskell2010

@@ -44,6 +44,19 @@ packages:
     subdir: lib/services/amazonka-dynamodb
     url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
 - completed:
+    name: amazonka-kms
+    pantry-tree:
+      sha256: 5bb7b703e86feeb7be852dd5a2708c732cccc76a4603ef5c3f611e4bc7f3bcfc
+      size: 14550
+    sha256: f9a2516e315ea9e8353246f632c722a0cbcd208b19404a8808ddf5ce7d5fc28b
+    size: 34731344
+    subdir: lib/services/amazonka-kms
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+    version: '2.0'
+  original:
+    subdir: lib/services/amazonka-kms
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+- completed:
     name: amazonka-sso
     pantry-tree:
       sha256: 9f2d5293772b1138eccf9dfa5ceaf4081d6a1e16f14cf8e161831364a0821304

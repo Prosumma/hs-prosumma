@@ -46,6 +46,7 @@ extra-deps:
   - lib/amazonka
   - lib/amazonka-core
   - lib/services/amazonka-dynamodb
+  - lib/services/amazonka-kms
   - lib/services/amazonka-sso
   - lib/services/amazonka-sts
 - github: prosumma/haskellpg

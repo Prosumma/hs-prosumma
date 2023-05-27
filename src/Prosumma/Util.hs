@@ -5,15 +5,17 @@ module Prosumma.Util (
   fromTextReader,
   hush,
   makeProsummaLenses,
+  om, 
   whenNothing,
   whenNothingM,
   Coalesce(..),
-  (??~),
-  (<->),
   (<#>),
-  (<=>),
+  (<->),
   (<<$>>),
-  (<<&>>)
+  (<<&>>),
+  (<=>),
+  (>>=>),
+  (??~)
 ) where
 
 import Control.Lens hiding ((??), (.~))
@@ -111,3 +113,13 @@ infixl 4 <<$>>
 (<<&>>) = flip (fmap . fmap)
 
 infixl 1 <<&>>
+
+-- | The @om@ combinator from `Control.Monad.Extra`.
+om :: Monad m => (a -> b -> m c) -> m a -> b -> m c
+om f b = (b >>=) . flip f
+
+-- | Flipped version of @om@.
+(>>=>) :: Monad m => m a -> (a -> b -> m c) -> b -> m c
+(>>=>) = flip om
+
+infixl 1 >>=>

@@ -24,6 +24,7 @@ dependencies:
 - amazonka >= 2.0 && < 3
 - amazonka-core >= 2.0 && < 3
 - amazonka-dynamodb >= 2.0 && < 3
+- amazonka-kms >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
 - data-default
@@ -41,6 +42,7 @@ dependencies:
 - string-conversions
 - template-haskell
 - text
+- triplesec
 
 ghc-options:
 - -Wall
