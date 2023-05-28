@@ -1,6 +1,13 @@
 {-# LANGUAGE DataKinds, DeriveDataTypeable, FlexibleContexts, TypeApplications #-}
 
-module Prosumma.Crypto where
+module Prosumma.Crypto (
+  decryptMessage,
+  encryptMessage,
+  encryptMessageWithMasterKey,
+  DecryptionException,
+  EncryptionException,
+  HasMasterKeyArn(..)
+) where
 
 import Amazonka
 import Amazonka.Data.ByteString
