@@ -116,7 +116,7 @@ infixl 1 <<&>>
 
 -- | The @om@ combinator from `Control.Monad.Extra`.
 om :: Monad m => (a -> b -> m c) -> m a -> b -> m c
-om f b = (b >>=) . flip f
+om f a = (a >>=) . flip f
 
 -- | Flipped version of @om@.
 (>>=>) :: Monad m => m a -> (a -> b -> m c) -> b -> m c
