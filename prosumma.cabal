@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Prosumma
+      Prosumma.Arrow
       Prosumma.AWS
       Prosumma.Crypto
       Prosumma.Environment

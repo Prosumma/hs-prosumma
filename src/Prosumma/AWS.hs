@@ -19,7 +19,8 @@ class HasAWSEnv a where
 instance HasAWSEnv Env where
   getAWSEnv = id
 
-sendAWS :: (
+sendAWS :: 
+  (
     MonadUnliftIO m,
     AWSRequest r,
     Typeable r,
@@ -31,15 +32,16 @@ sendAWS r = do
   env <- asks getAWSEnv
   runResourceT $ send env r
 
-sendAWSThrowOnError :: (
-  MonadUnliftIO m,
-  AWSRequest rq,
-  Typeable rq,
-  MonadThrow m,
-  MonadReader env m,
-  HasAWSEnv env,
-  HasField "httpStatus" rs rs Int Int,
-  Typeable rs,
-  Exception e, rs ~ AWSResponse rq
+sendAWSThrowOnError :: 
+  (
+    MonadUnliftIO m,
+    AWSRequest rq,
+    Typeable rq,
+    MonadThrow m,
+    MonadReader env m,
+    HasAWSEnv env,
+    HasField "httpStatus" rs rs Int Int,
+    Typeable rs,
+    Exception e, rs ~ AWSResponse rq
   ) => (Int -> e) -> rq -> m rs 
 sendAWSThrowOnError mkException = throwOnHttpStatusError mkException <=< sendAWS
