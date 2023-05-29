@@ -1,7 +1,6 @@
 module Spec.Crypto (testCrypto) where
 
 import Amazonka
-import Prelude (putStrLn)
 import Prosumma
 import Prosumma.AWS
 import Prosumma.Crypto
@@ -18,8 +17,8 @@ instance HasMasterKeyArn TestContext where
 
 testCrypto :: Spec
 testCrypto = do
-  describe "crypto" $
-    it "symmetric cryptography with KMS works" $ do 
+  describe "symmetric cryptography" $
+    it "successfully encrypts and decrypts" $ do 
       env <- newEnv discover
       masterKeyArn <- envString Nothing "AWS_MASTER_KEY_ARN"
       let context = TestContext env masterKeyArn
