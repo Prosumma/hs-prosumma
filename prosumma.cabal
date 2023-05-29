@@ -26,7 +26,6 @@ source-repository head
 library
   exposed-modules:
       Prosumma
-      Prosumma.Arrow
       Prosumma.AWS
       Prosumma.Crypto
       Prosumma.Environment
@@ -115,6 +114,7 @@ test-suite prosumma-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Spec.Crypto
       Spec.Exceptions
       Spec.Settings
       Spec.Textual

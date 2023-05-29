@@ -1,0 +1,11 @@
+#!/bin/zsh
+
+. ./env
+if [[ -n $1 ]]; then
+  command=$1;
+  shift;
+else
+  command=run;
+fi
+
+stack $command "$@";

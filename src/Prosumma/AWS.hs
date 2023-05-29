@@ -42,6 +42,7 @@ sendAWSThrowOnError ::
     HasAWSEnv env,
     HasField "httpStatus" rs rs Int Int,
     Typeable rs,
-    Exception e, rs ~ AWSResponse rq
+    Exception e,
+    rs ~ AWSResponse rq
   ) => (Int -> e) -> rq -> m rs 
 sendAWSThrowOnError mkException = throwOnHttpStatusError mkException <=< sendAWS
