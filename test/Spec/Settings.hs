@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, TypeApplications #-}
+{-# LANGUAGE DataKinds #-}
 
 module Spec.Settings (testSettings) where
 
@@ -16,11 +16,11 @@ data Settings = Settings {
   stgsAge  :: !Int,
   stgsGood :: !Bool,
   stgsWut  :: !(Maybe Int),
-  stgsWho  :: !Text 
+  stgsWho  :: !Text
 } deriving (Eq, Show)
 
 readPersonSettings :: [HashMap Text AttributeValue] -> Either String Settings
-readPersonSettings items = readSettings items $ \lookup ->
+readPersonSettings = readSettings $ \lookup ->
   Settings
     <$> lookup "name"
     <*> lookup "age"
@@ -29,27 +29,27 @@ readPersonSettings items = readSettings items $ \lookup ->
     <*> (lookup "who" ??~ "Greg")
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
-newRow key value = let attributeKey = S key in 
+newRow key value = let attributeKey = S key in
   HM.singleton "name" attributeKey <> HM.singleton "value" value
 
 testSettings :: Spec
 testSettings = do
-  describe "readSetting" $ do 
+  describe "readSetting" $ do
     it "assists in initializing records" $ do
-      let stringAttribute = S "Vina" 
+      let stringAttribute = S "Vina"
       let row1 = newRow "name" stringAttribute
-      let integerAttribute = N "22" 
+      let integerAttribute = N "22"
       let row2 = newRow "age" integerAttribute
-      let boolAttribute = BOOL False 
+      let boolAttribute = BOOL False
       let row3 = newRow "good" boolAttribute
       let rows = [row1, row2, row3]
-      let expected = Settings "Vina" 22 False Nothing "Greg" 
-      readPersonSettings rows `shouldBe` Right expected 
+      let expected = Settings "Vina" 22 False Nothing "Greg"
+      readPersonSettings rows `shouldBe` Right expected
     it "fails to initialize a record given invalid data" $ do
-      let stringAttribute = S "Vina" 
+      let stringAttribute = S "Vina"
       let row1 = newRow "name" stringAttribute
-      let integerAttribute = S "Whatever" 
+      let integerAttribute = S "Whatever"
       let ageName = "age"
       let row2 = newRow ageName integerAttribute
       let rows = [row1, row2]
-      readPersonSettings rows `shouldBe` Left (printf lookupErrorIncorrectType ageName) 
+      readPersonSettings rows `shouldBe` Left (printf lookupErrorIncorrectType ageName)

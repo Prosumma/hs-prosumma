@@ -97,8 +97,8 @@ type ReadSettings s = ReadSetting s => Text -> Either String s
 -- > readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
 -- > readPersonSettings items = readSettings items $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
-readSettings :: [TableItem] -> ((forall s. ReadSettings s) -> Either String a) -> Either String a 
-readSettings items make = make $ lookupSetting (settings items) 
+readSettings :: ((forall s. ReadSettings s) -> Either String a) -> [TableItem] -> Either String a 
+readSettings make items = make $ lookupSetting (settings items) 
 
 data SettingsScanException = SettingsScanException !Text !Int deriving (Show, Typeable) 
 instance Exception SettingsScanException
