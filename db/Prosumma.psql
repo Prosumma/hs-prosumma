@@ -24,3 +24,7 @@ CREATE DATABASE prosumma;
 
 CREATE EXTENSION "uuid-ossp";
 CREATE EXTENSION citext;
+
+-- Shared Types
+
+CREATE DOMAIN APP AS TEXT NULL CHECK(VALUE ~ '^[a-z][a-z0-9_-]*$');
