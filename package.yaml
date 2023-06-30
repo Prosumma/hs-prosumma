@@ -35,9 +35,9 @@ dependencies:
 - mtl
 - piggy
 - postgresql-simple
-- rio
 - regex-tdfa
 - resource-pool
+- rio
 - servant-server
 - string-conversions
 - template-haskell
