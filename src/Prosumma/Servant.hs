@@ -54,9 +54,8 @@ runApplication handler transform proxy api state = serve proxy $ hoistServer pro
 runApplicationWithLogFunc ::
   forall (api :: Type) s.
   (HasLogFunc s, HasServer api '[]) =>
-  LogFunc -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
-runApplicationWithLogFunc logFunc transform proxy api state = runApplication loggingExceptionHandler transform proxy api $
-  state & logFuncL .~ logFunc
+  LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithLogFunc logFunc proxy api state = runApplication loggingExceptionHandler id proxy api $ state & logFuncL .~ logFunc
 
 runApplicationWithLogging ::
   forall (api :: Type) s.
