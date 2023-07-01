@@ -1,10 +1,20 @@
 module Prosumma.Logging (
   initDefaultLogging,
+  newLogger,
   withInitLogging,
-  withLogging
+  withLogging,
+  Logger(..)
 ) where
 
 import RIO
+
+newtype Logger = Logger { loggerLogFunc :: LogFunc }
+
+newLogger :: Logger
+newLogger = Logger mempty
+
+instance HasLogFunc Logger where
+  logFuncL = lens loggerLogFunc (\context loggerLogFunc -> context{loggerLogFunc})
 
 initDefaultLogging :: IO LogOptions
 initDefaultLogging = logOptionsHandle stderr True <&> setLogUseTime True . setLogUseLoc True 
