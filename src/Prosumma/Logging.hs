@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module Prosumma.Logging (
   initDefaultLogging,
   newLogger,
