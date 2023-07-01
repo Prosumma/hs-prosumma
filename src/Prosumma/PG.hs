@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Prosumma.PG (
   HasConnectionPool(..),
   liftPG
@@ -9,6 +11,9 @@ import RIO
 
 class HasConnectionPool a where
   getConnectionPool :: a -> Pool Connection
+
+instance HasConnectionPool (Pool Connection) where
+  getConnectionPool = id
 
 liftPG :: (MonadReader env m, HasConnectionPool env, MonadIO m) => PG a -> m a
 liftPG pg = do
