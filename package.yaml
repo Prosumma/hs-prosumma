@@ -30,6 +30,7 @@ dependencies:
 - data-default
 - exceptions
 - extra
+- formatting
 - generic-lens
 - lens
 - mtl

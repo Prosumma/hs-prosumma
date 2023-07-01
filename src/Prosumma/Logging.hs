@@ -1,7 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Prosumma.Logging (
-  displayText,
   initDefaultLogging,
   newLogger,
   withDefaultLogging,
@@ -35,6 +34,3 @@ withLogging app options = do
 
 withDefaultLogging :: HasLogFunc s => RIO s a -> RIO s a
 withDefaultLogging = withInitLogging initDefaultLogging
-  
-displayText :: Text -> Utf8Builder
-displayText = display

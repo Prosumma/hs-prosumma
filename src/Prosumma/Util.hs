@@ -1,11 +1,13 @@
 module Prosumma.Util (
   also,
   coalesce,
+  displayText,
   fmapMaybeM,
   fromTextReader,
   hush,
   makeProsummaLenses,
   om, 
+  uformat,
   whenNothing,
   whenNothingM,
   Coalesce(..),
@@ -22,9 +24,13 @@ import Control.Lens hiding ((??), (.~))
 import Data.Either.Extra
 import Data.Text.Read
 import Data.Foldable
+import Formatting
 import Language.Haskell.TH
 import RIO hiding (Reader)
 import RIO.Map (singleton)
+
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Builder as T
 
 hush :: Either e a -> Maybe a
 hush = eitherToMaybe
@@ -123,3 +129,9 @@ om f a = (a >>=) . flip f
 (>>=>) = flip om
 
 infixl 1 >>=>
+
+displayText :: Text -> Utf8Builder
+displayText = display
+
+uformat :: Format Utf8Builder a -> a
+uformat m = runFormat m (display . T.toStrict . T.toLazyText)
