@@ -3,6 +3,7 @@
 module Prosumma.Logging (
   initDefaultLogging,
   newLogger,
+  withDefaultLogging,
   withInitLogging,
   withLogging,
   Logger(..)
@@ -30,3 +31,7 @@ withLogging app options = do
   liftIO $ withLogFunc options $ \logFunc -> do
     let loggingState = state & logFuncL .~ logFunc
     runRIO loggingState app
+
+withDefaultLogging :: HasLogFunc s => RIO s a -> RIO s a
+withDefaultLogging = withInitLogging initDefaultLogging
+  
