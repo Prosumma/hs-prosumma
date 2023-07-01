@@ -2,14 +2,13 @@
 
 module Prosumma.Servant (
   defaultExceptionHandler,
-  initDefaultLogging,
   loggingExceptionHandler,
   mapServerException,
   runApplication,
   runApplicationWithDefaultLogging,
+  runApplicationWithLogFunc,
   runApplicationWithLogging,
   runApplicationWithoutLogging,
-  withInitLogging,
   ServerExceptionHandler,
   ServerHandler,
   ServerResponse,
@@ -18,6 +17,7 @@ module Prosumma.Servant (
 
 import Control.Monad.Error.Class
 import Data.Kind
+import Prosumma.Logging
 import RIO hiding (Handler)
 import Servant
 
@@ -39,19 +39,6 @@ loggingExceptionHandler e = do
   logError $ displayShow e
   return $ mapServerException e
 
-initDefaultLogging :: IO LogOptions
-initDefaultLogging = logOptionsHandle stderr True <&> setLogUseTime True . setLogUseLoc True 
-
-withLogging :: HasLogFunc s => RIO s a -> LogOptions -> RIO s a
-withLogging app options = do
-  state <- ask
-  liftIO $ withLogFunc options $ \logFunc -> do
-    let loggingState = state & logFuncL .~ logFunc
-    runRIO loggingState app
-
-withInitLogging :: HasLogFunc s => IO LogOptions -> RIO s a -> RIO s a
-withInitLogging initLogging app = liftIO initLogging >>= withLogging app
-
 runApp :: ServerExceptionHandler s a -> StateTransform s a -> s -> RIO s a -> ServerHandler a
 runApp handler transform state app = liftIO $ runRIO state $ catch (Right <$> transform app) handler
 
@@ -63,6 +50,13 @@ runApplication ::
   HasServer api '[] =>
   (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler transform proxy api state = serve proxy $ hoistServer proxy (mapApp handler transform state) api
+
+runApplicationWithLogFunc ::
+  forall (api :: Type) s.
+  (HasLogFunc s, HasServer api '[]) =>
+  LogFunc -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithLogFunc logFunc transform proxy api state = runApplication loggingExceptionHandler transform proxy api $
+  state & logFuncL .~ logFunc
 
 runApplicationWithLogging ::
   forall (api :: Type) s.
