@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, NamedFieldPuns #-}
 
 module Prosumma.PG (
   execute_,
@@ -10,6 +10,7 @@ module Prosumma.PG (
   value1_,
   value1,
   HasConnectionPool(..),
+  PG(..)
 ) where
 
 import Database.PostgreSQL.Simple (formatQuery, Connection, FromRow, Query, Only(..), ToRow)
@@ -28,6 +29,17 @@ class HasConnectionPool a where
 
 instance HasConnectionPool (Pool Connection) where
   getConnectionPool = id
+
+data PG = PG {
+  pgConnectionPool :: !(Pool Connection),
+  pgLogFunc :: LogFunc
+}
+
+instance HasConnectionPool PG where
+  getConnectionPool = pgConnectionPool
+
+instance HasLogFunc PG where
+  logFuncL = lens pgLogFunc (\context pgLogFunc -> context{pgLogFunc})
 
 runWithConnection :: (MonadReader env m, HasConnectionPool env, MonadIO m) => (Connection -> IO a) -> m a
 runWithConnection action = do
