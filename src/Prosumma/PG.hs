@@ -9,6 +9,7 @@ module Prosumma.PG (
   query1,
   value1_,
   value1,
+  ConnectionPool,
   HasConnectionPool(..),
   PG(..)
 ) where
@@ -24,14 +25,16 @@ import RIO
 
 import qualified Database.PostgreSQL.Simple as PG
 
-class HasConnectionPool a where
-  getConnectionPool :: a -> Pool Connection
+type ConnectionPool = Pool Connection
 
-instance HasConnectionPool (Pool Connection) where
+class HasConnectionPool a where
+  getConnectionPool :: a -> ConnectionPool 
+
+instance HasConnectionPool ConnectionPool where
   getConnectionPool = id
 
 data PG = PG {
-  pgConnectionPool :: !(Pool Connection),
+  pgConnectionPool :: !ConnectionPool,
   pgLogFunc :: LogFunc
 }
 
