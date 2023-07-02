@@ -61,6 +61,7 @@ library
     , formatting
     , generic-lens
     , lens
+    , listsafe
     , monad-control
     , mtl
     , postgresql-simple
@@ -99,6 +100,7 @@ executable prosumma-exe
     , formatting
     , generic-lens
     , lens
+    , listsafe
     , monad-control
     , mtl
     , postgresql-simple
@@ -146,6 +148,7 @@ test-suite prosumma-test
     , hspec
     , hspec-expectations
     , lens
+    , listsafe
     , monad-control
     , mtl
     , postgresql-simple

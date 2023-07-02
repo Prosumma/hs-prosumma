@@ -33,6 +33,7 @@ dependencies:
 - formatting
 - generic-lens
 - lens
+- listsafe
 - monad-control
 - mtl
 - postgresql-simple
