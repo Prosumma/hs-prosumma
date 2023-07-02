@@ -61,8 +61,8 @@ library
     , formatting
     , generic-lens
     , lens
+    , monad-control
     , mtl
-    , piggy
     , postgresql-simple
     , regex-tdfa
     , resource-pool
@@ -99,8 +99,8 @@ executable prosumma-exe
     , formatting
     , generic-lens
     , lens
+    , monad-control
     , mtl
-    , piggy
     , postgresql-simple
     , prosumma
     , regex-tdfa
@@ -146,8 +146,8 @@ test-suite prosumma-test
     , hspec
     , hspec-expectations
     , lens
+    , monad-control
     , mtl
-    , piggy
     , postgresql-simple
     , prosumma
     , regex-tdfa

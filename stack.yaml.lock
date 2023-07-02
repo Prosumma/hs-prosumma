@@ -82,17 +82,6 @@ packages:
   original:
     subdir: lib/services/amazonka-sts
     url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
-- completed:
-    name: piggy
-    pantry-tree:
-      sha256: 39e34e3944355200b0e577410e877ec2809cdcd79098ca407e1f023819007b89
-      size: 671
-    sha256: b8b1eedc2b6d302af8fcc85b4a210af1bfd31cf64b82099999af80f0fb226edf
-    size: 7325
-    url: https://github.com/prosumma/haskellpg/archive/fd371be5a21d6f2c94ca9dcd70322e3b52837a44.tar.gz
-    version: 1.0.1
-  original:
-    url: https://github.com/prosumma/haskellpg/archive/fd371be5a21d6f2c94ca9dcd70322e3b52837a44.tar.gz
 snapshots:
 - completed:
     sha256: 5a59b2a405b3aba3c00188453be172b85893cab8ebc352b1ef58b0eae5d248a2
