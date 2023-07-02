@@ -3,6 +3,7 @@
 module Prosumma.Exceptions (
   HelpMatchException,
   MatchException,
+  catchLog,
   catchMatch,
   liftEitherM,
   matchAll,
@@ -94,3 +95,6 @@ liftEitherM :: (MonadThrow m, Exception e) => Either e a -> m a
 liftEitherM either = case either of
   Left e -> throwM e
   Right a -> return a
+
+catchLog :: (MonadUnliftIO m, MonadReader env m, HasLogFunc env) => m a -> m a
+catchLog action = catch action $ \(e :: SomeException) -> logError (displayShow e) >> throwIO e 
