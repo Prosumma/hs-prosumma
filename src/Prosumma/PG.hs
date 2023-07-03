@@ -90,7 +90,7 @@ data SQLQuery where
 
 formatSQLQuery :: Connection -> SQLQuery -> IO Text
 formatSQLQuery _ (SQLQuery sql) = return $ toText $ fromQuery sql
-formatSQLQuery conn (ParameterizedSQLQuery sql q) = formatQuery conn sql q <&> toText
+formatSQLQuery conn (ParameterizedSQLQuery sql q) = toText <$> formatQuery conn sql q
 
 -- | Logs a @SQLQuery@ and then runs the @Connection -> IO a@ action with @runConnection@. 
 -- 
