@@ -5,6 +5,7 @@ module Prosumma.Logging (
   newLogger,
   withDefaultLogging,
   withInitLogging,
+  withLogFuncL,
   withLogging,
   Logger(..)
 ) where
@@ -34,3 +35,6 @@ withLogging app options = do
 
 withDefaultLogging :: HasLogFunc s => RIO s a -> RIO s a
 withDefaultLogging = withInitLogging initDefaultLogging
+
+withLogFuncL :: (MonadReader env m, HasLogFunc env) => (LogFunc -> m a) -> m a
+withLogFuncL action = asks (^.logFuncL) >>= action 

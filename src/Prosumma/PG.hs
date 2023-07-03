@@ -17,6 +17,7 @@ module Prosumma.PG (
 ) where
 
 import Control.Composition
+import Data.Functor
 import Database.PostgreSQL.Simple (close, connectPostgreSQL, formatQuery, Connection, FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
@@ -59,10 +60,10 @@ class ConnectionRunner r where
   runConnection :: MonadIO m => r -> (Connection -> IO a) -> m a
 
 instance ConnectionRunner ConnectionPool where
-  runConnection = liftIO .* withResource 
+  runConnection = liftIO .* withResource
 
 instance ConnectionRunner Connection where
-  runConnection = liftIO .* (&) 
+  runConnection = liftIO .* (&)
 
 -- | Contains the minimum fields needed to call one of the query functions
 -- exported from this module, such as @execute@, @query@, @value1@, etc.
@@ -76,6 +77,9 @@ instance HasLogFunc (PG r) where
 instance ConnectionRunner r => ConnectionRunner (PG r) where
   runConnection PG{..} = runConnection pgConnectionRunner
 
+withConnection :: (MonadReader env m, ConnectionRunner env, MonadIO m) => (Connection -> IO a) -> m a
+withConnection = ask >>=> runConnection 
+
 logSource :: LogSource
 logSource = "SQL"
 
@@ -84,7 +88,7 @@ data SQLQuery where
   SQLQuery :: Query -> SQLQuery
   ParameterizedSQLQuery :: ToRow q => Query -> q -> SQLQuery
 
-formatSQLQuery :: Connection -> SQLQuery -> IO Text 
+formatSQLQuery :: Connection -> SQLQuery -> IO Text
 formatSQLQuery _ (SQLQuery sql) = return $ toText $ fromQuery sql
 formatSQLQuery conn (ParameterizedSQLQuery sql q) = formatQuery conn sql q <&> toText
 
@@ -96,13 +100,13 @@ formatSQLQuery conn (ParameterizedSQLQuery sql q) = formatQuery conn sql q <&> t
 run
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
   => SQLQuery -> (Connection -> IO a) -> m a
-run query action = do
-  env <- ask
-  let logFunc = env^.logFuncL
-  runConnection env $ \conn -> do
-    runRIO (Logger logFunc) $
-      liftIO (formatSQLQuery conn query) >>= logDebugS logSource . display
-    liftIO $ action conn 
+run query action = 
+  withLogFuncL $ \logFunc -> 
+    withConnection $ \conn ->
+      runRIO (Logger logFunc) $
+        liftIO (formatSQLQuery conn query) >>=
+        logDebugS logSource . display >>
+        liftIO (action conn)
 
 -- | Runs — but first, logs — an unparameterized SQL query. 
 runSQLQuery
@@ -129,29 +133,29 @@ execute = runParameterizedSQLQuery PG.execute
 query_
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, FromRow r)
   => Query -> m [r]
-query_ = runSQLQuery PG.query_ 
+query_ = runSQLQuery PG.query_
 
 query
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, FromRow r)
   => Query -> q -> m [r]
-query = runParameterizedSQLQuery PG.query 
+query = runParameterizedSQLQuery PG.query
 
 query1_
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r)
-  => Query -> m r 
-query1_ = query_ >=> head 
+  => Query -> m r
+query1_ = query_ >=> head
 
 query1
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, MonadThrow m, FromRow r)
-  => Query -> q -> m r 
-query1 = query >=*> head 
+  => Query -> q -> m r
+query1 = query >=*> head
 
 value1_
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v)
-  => Query -> m v 
-value1_ = query1_ >=> head
+  => Query -> m v
+value1_ = (fromOnly <$>) . query1_ 
 
 value1
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v)
   => Query -> q -> m v
-value1 = query1 >=*> head
+value1 = (fromOnly <$>) .* query1 
