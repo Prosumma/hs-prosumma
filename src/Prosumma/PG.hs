@@ -16,6 +16,7 @@ module Prosumma.PG (
   PG(..)
 ) where
 
+import Control.Composition
 import Database.PostgreSQL.Simple (close, connectPostgreSQL, formatQuery, Connection, FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
@@ -46,7 +47,7 @@ type ConnectionPool = Pool Connection
 -- Note that the @query@ function used in the example above is the one from @Database.PostgreSQL.Simple@.
 -- 
 -- However, there's no need to call @runConnection@ directly. Instead, the functions exported from
--- this module should be used:
+-- this module should be used, since they take care of calling @runConnection@ for you:
 --
 -- > getUser :: UUID -> RIO (PG Connection) [User]
 -- > getUser id = query "SELECT * FROM \"user\" WHERE id = ?" (Only id)   
@@ -58,10 +59,10 @@ class ConnectionRunner r where
   runConnection :: MonadIO m => r -> (Connection -> IO a) -> m a
 
 instance ConnectionRunner ConnectionPool where
-  runConnection pool action = liftIO $ withResource pool action
+  runConnection = liftIO .* withResource 
 
 instance ConnectionRunner Connection where
-  runConnection conn action = liftIO $ action conn
+  runConnection = liftIO .* (&) 
 
 -- | Contains the minimum fields needed to call one of the query functions
 -- exported from this module, such as @execute@, @query@, @value1@, etc.

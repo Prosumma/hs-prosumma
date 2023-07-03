@@ -55,6 +55,7 @@ library
     , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
+    , composition-prelude
     , data-default
     , exceptions
     , extra
@@ -94,6 +95,7 @@ executable prosumma-exe
     , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
+    , composition-prelude
     , data-default
     , exceptions
     , extra
@@ -140,6 +142,7 @@ test-suite prosumma-test
     , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
     , base >=4.7 && <5
+    , composition-prelude
     , data-default
     , exceptions
     , extra

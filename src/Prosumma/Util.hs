@@ -7,7 +7,6 @@ module Prosumma.Util (
   hush,
   makeProsummaLenses,
   om,
-  ong,
   slipr,
   uformat,
   whenNothing,
@@ -19,7 +18,6 @@ module Prosumma.Util (
   (<<&>>),
   (<=>),
   (>>=>),
-  (>=*>),
   (??~)
 ) where
 
@@ -136,13 +134,6 @@ om f a = (a >>=) . flip f
 (>>=>) = flip om
 
 infixl 1 >>=>
-
--- | Type signature tells us what it does. Name is totally made up.
-ong :: Monad m => (a -> b -> m c) -> (c -> m d) -> a -> b -> m d
-ong f2 f1 a b = f2 a b >>= f1
-
-(>=*>) :: Monad m => (a -> b -> m c) -> (c -> m d) -> a -> b -> m d
-(>=*>) = ong
 
 displayText :: Text -> Utf8Builder
 displayText = display
