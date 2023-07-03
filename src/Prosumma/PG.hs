@@ -92,7 +92,9 @@ formatSQLQuery conn (ParameterizedSQLQuery sql q) = formatQuery conn sql q <&> t
 -- This helper function is used by @runSQLQuery@ and @runParameterizedSQLQuery@. 
 --
 -- Note that the log level must be at least DEBUG for the query to be logged.
-run :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => SQLQuery -> (Connection -> IO a) -> m a
+run
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
+  => SQLQuery -> (Connection -> IO a) -> m a
 run query action = do
   env <- ask
   let logFunc = env^.logFuncL
@@ -102,33 +104,53 @@ run query action = do
     liftIO $ action conn 
 
 -- | Runs — but first, logs — an unparameterized SQL query. 
-runSQLQuery :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => (Connection -> Query -> IO a) -> Query -> m a
+runSQLQuery
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
+  => (Connection -> Query -> IO a) -> Query -> m a
 runSQLQuery action sql = run (SQLQuery sql) $ flip action sql
 
 -- | Runs — but first, logs — a parameterized SQL query.
-runParameterizedSQLQuery :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q) => (Connection -> Query -> q -> IO a) -> Query -> q -> m a
+runParameterizedSQLQuery
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q)
+  => (Connection -> Query -> q -> IO a) -> Query -> q -> m a
 runParameterizedSQLQuery action sql q = run (ParameterizedSQLQuery sql q) $ slipr action sql q
 
-execute_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => Query -> m Int64
+execute_
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
+  => Query -> m Int64
 execute_ = runSQLQuery PG.execute_
 
-execute :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q) => Query -> q -> m Int64
+execute
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q)
+  => Query -> q -> m Int64
 execute = runParameterizedSQLQuery PG.execute
 
-query_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, FromRow r) => Query -> m [r]
+query_
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, FromRow r)
+  => Query -> m [r]
 query_ = runSQLQuery PG.query_ 
 
-query :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, FromRow r) => Query -> q -> m [r]
+query
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, FromRow r)
+  => Query -> q -> m [r]
 query = runParameterizedSQLQuery PG.query 
 
-query1_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r) => Query -> m r 
+query1_
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r)
+  => Query -> m r 
 query1_ = query_ >=> head 
 
-query1 :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, MonadThrow m, FromRow r) => Query -> q -> m r 
+query1
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, MonadThrow m, FromRow r)
+  => Query -> q -> m r 
 query1 = query >=*> head 
 
-value1_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v) => Query -> m v 
+value1_
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v)
+  => Query -> m v 
 value1_ = query1_ >=> head
 
-value1 :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v) => Query -> q -> m v
+value1
+  :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v)
+  => Query -> q -> m v
 value1 = query1 >=*> head
