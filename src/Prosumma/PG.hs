@@ -26,7 +26,7 @@ import Data.Pool
 import Prosumma.Logging
 import Prosumma.Textual
 import Prosumma.Util
-import RIO
+import RIO hiding (withLogFunc)
 
 import qualified Database.PostgreSQL.Simple as PG
 
@@ -101,7 +101,7 @@ run
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
   => SQLQuery -> (Connection -> IO a) -> m a
 run query action = 
-  withLogFuncL $ \logFunc -> 
+  withLogFunc $ \logFunc -> 
     withConnection $ \conn ->
       runRIO (Logger logFunc) $
         liftIO (formatSQLQuery conn query) >>=

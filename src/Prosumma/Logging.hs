@@ -5,12 +5,14 @@ module Prosumma.Logging (
   newLogger,
   withDefaultLogging,
   withInitLogging,
-  withLogFuncL,
+  withLogFunc,
   withLogging,
   Logger(..)
 ) where
 
-import RIO
+import RIO hiding (withLogFunc)
+
+import qualified RIO
 
 newtype Logger = Logger { loggerLogFunc :: LogFunc }
 
@@ -29,12 +31,12 @@ withInitLogging initLogging app = liftIO initLogging >>= withLogging app
 withLogging :: HasLogFunc s => RIO s a -> LogOptions -> RIO s a
 withLogging app options = do
   state <- ask
-  liftIO $ withLogFunc options $ \logFunc -> do
+  liftIO $ RIO.withLogFunc options $ \logFunc -> do
     let loggingState = state & logFuncL .~ logFunc
     runRIO loggingState app
 
 withDefaultLogging :: HasLogFunc s => RIO s a -> RIO s a
 withDefaultLogging = withInitLogging initDefaultLogging
 
-withLogFuncL :: (MonadReader env m, HasLogFunc env) => (LogFunc -> m a) -> m a
-withLogFuncL action = asks (^.logFuncL) >>= action 
+withLogFunc :: (MonadReader env m, HasLogFunc env) => (LogFunc -> m a) -> m a
+withLogFunc action = asks (^.logFuncL) >>= action 
