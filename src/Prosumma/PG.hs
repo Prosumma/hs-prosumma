@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, NamedFieldPuns #-}
+{-# LANGUAGE FlexibleInstances, GADTs, NamedFieldPuns, RecordWildCards #-}
 
 module Prosumma.PG (
   execute_,
@@ -10,88 +10,88 @@ module Prosumma.PG (
   value1_,
   value1,
   ConnectionPool,
-  HasConnectionPool(..),
+  ConnectionRunner(..),
   PG(..)
 ) where
 
-import Database.PostgreSQL.Simple (formatQuery, Connection, FromRow, Query, Only(..), ToRow)
+import Database.PostgreSQL.Simple (formatQuery, Connection, FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.Types (fromQuery)
+import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.Pool
 import Prosumma.Logging
 import Prosumma.Textual
+import Prosumma.Util
 import RIO
 
 import qualified Database.PostgreSQL.Simple as PG
 
 type ConnectionPool = Pool Connection
 
-class HasConnectionPool a where
-  getConnectionPool :: a -> ConnectionPool 
+class ConnectionRunner r where
+  runConnection :: MonadIO m => r -> (Connection -> IO a) -> m a
 
-instance HasConnectionPool ConnectionPool where
-  getConnectionPool = id
+instance ConnectionRunner ConnectionPool where
+  runConnection pool action = liftIO $ withResource pool action
 
-data PG = PG {
-  pgConnectionPool :: !ConnectionPool,
-  pgLogFunc :: LogFunc
-}
+instance ConnectionRunner Connection where
+  runConnection conn action = liftIO $ action conn
 
-instance HasConnectionPool PG where
-  getConnectionPool = pgConnectionPool
+data PG r = PG { pgConnectionRunner :: r, pgLogFunc :: LogFunc }
 
-instance HasLogFunc PG where
-  logFuncL = lens pgLogFunc (\context pgLogFunc -> context{pgLogFunc})
+instance HasLogFunc (PG r) where
+  logFuncL = lens pgLogFunc $ \context pgLogFunc -> context{pgLogFunc}
 
-runWithConnection :: (MonadReader env m, HasConnectionPool env, MonadIO m) => (Connection -> IO a) -> m a
-runWithConnection action = do
-  pool <- asks getConnectionPool
-  liftIO $ withResource pool action
+instance ConnectionRunner r => ConnectionRunner (PG r) where
+  runConnection PG{..} = runConnection pgConnectionRunner
 
-sqlLogSource :: LogSource
-sqlLogSource = "SQL"
+logSource :: LogSource
+logSource = "SQL"
 
-logSQL :: (MonadReader env m, HasLogFunc env, MonadIO m, HasCallStack) => Query -> m ()
-logSQL = logDebugS sqlLogSource .  display . toText . fromQuery
+data SQLQuery where
+  SQLQuery :: Query -> SQLQuery
+  ParameterizedSQLQuery :: ToRow q => Query -> q -> SQLQuery
 
-logQuery :: (MonadIO m, ToRow q, HasCallStack) => Connection -> LogFunc -> Query -> q -> m ()
-logQuery conn logFunc sql q = runRIO (Logger logFunc) $ do
-  query <- liftIO $ formatQuery conn sql q
-  logDebugS sqlLogSource $ display $ toText query
+formatSQLQuery :: Connection -> SQLQuery -> IO Text 
+formatSQLQuery _ (SQLQuery sql) = return $ toText $ fromQuery sql
+formatSQLQuery conn (ParameterizedSQLQuery sql q) = formatQuery conn sql q <&> toText
 
-execute_ :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m) => Query -> m Int64
-execute_ sql = do
-  logSQL sql
-  runWithConnection $ \conn -> PG.execute_ conn sql
+run :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => SQLQuery -> (Connection -> IO a) -> m a
+run query action = do
+  env <- ask
+  let logFunc = env^.logFuncL
+  runConnection env $ \conn -> do
+    runRIO (Logger logFunc) $ do
+      formattedQuery <- liftIO $ formatSQLQuery conn query
+      logDebugS logSource $ display formattedQuery
+    liftIO $ action conn 
 
-query_ :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, FromRow r) => Query -> m [r]
-query_ sql = do
-  logSQL sql
-  runWithConnection $ \conn -> PG.query_ conn sql
+runSQLQuery :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => (Connection -> Query -> IO a) -> Query -> m a
+runSQLQuery action sql = run (SQLQuery sql) $ flip action sql
 
-execute :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, ToRow q) => Query -> q -> m Int64
-execute sql q = do
-  logFunc <- asks (^.logFuncL)
-  runWithConnection $ \conn -> do
-    logQuery conn logFunc sql q
-    PG.execute conn sql q
+runParameterizedSQLQuery :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q) => (Connection -> Query -> q -> IO a) -> Query -> q -> m a
+runParameterizedSQLQuery action sql q = run (ParameterizedSQLQuery sql q) $ slipr action sql q
 
-query :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, ToRow q, FromRow r) => Query -> q -> m [r]
-query sql q = do
-  logFunc <- asks (^.logFuncL)
-  runWithConnection $ \conn -> do
-    logQuery conn logFunc sql q
-    PG.query conn sql q
+execute_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m) => Query -> m Int64
+execute_ = runSQLQuery PG.execute_
 
-query1_ :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r) => Query -> m r 
-query1_ sql = query_ sql >>= head
+execute :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q) => Query -> q -> m Int64
+execute = runParameterizedSQLQuery PG.execute
 
-query1 :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromRow r) => Query -> q -> m r 
-query1 sql q = query sql q >>= head
+query_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, FromRow r) => Query -> m [r]
+query_ = runSQLQuery PG.query_ 
 
-value1_ :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v) => Query -> m v
-value1_ sql = fromOnly <$> query1_ sql
+query :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, FromRow r) => Query -> q -> m [r]
+query = runParameterizedSQLQuery PG.query 
 
-value1 :: (MonadReader env m, HasConnectionPool env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v) => Query -> q -> m v 
-value1 sql q = fromOnly <$> query1 sql q
+query1_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r) => Query -> m r 
+query1_ = query_ >=> head 
+
+query1 :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, ToRow q, MonadThrow m, FromRow r) => Query -> q -> m r 
+query1 = query >=*> head 
+
+value1_ :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v) => Query -> m v 
+value1_ = query1_ >=> head
+
+value1 :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v) => Query -> q -> m v
+value1 = query1 >=*> head

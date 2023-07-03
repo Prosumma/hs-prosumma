@@ -6,7 +6,9 @@ module Prosumma.Util (
   fromTextReader,
   hush,
   makeProsummaLenses,
-  om, 
+  om,
+  ong,
+  slipr,
   uformat,
   whenNothing,
   whenNothingM,
@@ -17,6 +19,7 @@ module Prosumma.Util (
   (<<&>>),
   (<=>),
   (>>=>),
+  (>=*>),
   (??~)
 ) where
 
@@ -32,6 +35,10 @@ import RIO.Map (singleton)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
 
+-- Borrowed from composition-extra, but I don't need the whole library.
+slipr :: (a -> b -> c -> d) -> b -> c -> a -> d
+slipr f b c a = f a b c
+
 hush :: Either e a -> Maybe a
 hush = eitherToMaybe
 
@@ -39,7 +46,7 @@ makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
 
 class Coalesce a where
-  (??) :: a -> a -> a 
+  (??) :: a -> a -> a
 
 infixl 1 ??
 
@@ -56,7 +63,7 @@ instance Coalesce (Either e a) where
 
 infixl 1 ??~
 
-(??~) :: (Applicative m, Coalesce (m a)) => m a -> a -> m a 
+(??~) :: (Applicative m, Coalesce (m a)) => m a -> a -> m a
 a ??~ b = a ?? pure b
 
 -- | Do something as a side effect.
@@ -124,11 +131,18 @@ infixl 1 <<&>>
 om :: Monad m => (a -> b -> m c) -> m a -> b -> m c
 om f a = (a >>=) . flip f
 
--- | Flipped version of @om@.
+-- | Flipped version of @om@ as an operator.
 (>>=>) :: Monad m => m a -> (a -> b -> m c) -> b -> m c
 (>>=>) = flip om
 
 infixl 1 >>=>
+
+-- | Type signature tells us what it does. Name is totally made up.
+ong :: Monad m => (a -> b -> m c) -> (c -> m d) -> a -> b -> m d
+ong f2 f1 a b = f2 a b >>= f1
+
+(>=*>) :: Monad m => (a -> b -> m c) -> (c -> m d) -> a -> b -> m d
+(>=*>) = ong
 
 displayText :: Text -> Utf8Builder
 displayText = display
