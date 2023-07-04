@@ -1,11 +1,11 @@
 module Prosumma.Textual (
-  Textual(..),
-  ifMatchTextual,
   fromFieldTextual,
   fromStringTextual,
+  ifMatchTextual,
   parseJSONTextual,
+  showTextual,
   unsafeFromText,
-  showTextual
+  Textual(..)
 ) where
 
 import Data.Aeson.Types
