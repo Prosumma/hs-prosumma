@@ -39,7 +39,7 @@ createCache cacheTTL cacheFetch = do
   cacheStore <- newMVar Map.empty
   return Cache{..}
 
-cacheGetEntry :: (Ord k, MonadIO m) => k -> Cache k v -> m (Maybe (Entry v))
+cacheGetEntry :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe (Entry v))
 cacheGetEntry key Cache{..} = do
   store <- takeMVar cacheStore
   case Map.lookup key store of
@@ -53,7 +53,7 @@ cacheGetEntry key Cache{..} = do
     Nothing -> cacheFetchEntry store 
   where
     cacheFetchEntry store = do
-      maybeValue <- liftIO $ cacheFetch key
+      maybeValue <- catchAny (liftIO $ cacheFetch key) $ handleException store
       case maybeValue of
         Nothing -> do
           putMVar cacheStore store
@@ -62,11 +62,14 @@ cacheGetEntry key Cache{..} = do
           ne <- newEntry value
           putMVar cacheStore $ Map.insert key ne store 
           return $ Just ne
+    handleException store e = do
+      putMVar cacheStore store
+      throwIO e
 
 -- | Gets an entry from the given @Cache@. This operation is thread-safe.
 --
 -- If there's a cache miss because the entry is not present or is stale,
 -- the @cacheFetch@ function passed to @createCache@ is used to attempt
 -- to fetch the value. 
-cacheGet :: (Ord k, MonadIO m) => k -> Cache k v -> m (Maybe v)
+cacheGet :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = (entryValue <$>) <$> cacheGetEntry key cache 

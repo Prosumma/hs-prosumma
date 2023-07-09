@@ -9,6 +9,7 @@ get :: Text -> IO (Maybe Int)
 get "one" = return $ Just 1
 get "two" = return $ Just 2
 get "random" = Just <$> randomRIO (1, 100000)
+get "exception" = error "exception" 
 get _ = return Nothing
 
 testCache :: Spec
@@ -35,6 +36,12 @@ testCache = do
       let first = fst result
       let second = snd result
       first `shouldBe` second
+    it "safely handles exceptions" $ do
+      cache <- createCache Nothing get
+      thread1 <- async $ cacheGet "exception" cache
+      value <- cacheGet "one" cache
+      threadValue <- catchAny (wait thread1) $ const (return (Just 0)) 
+      (value, threadValue) `shouldBe` (Just 1, Just 0)
   describe "cacheGet with TTL" $ do
     it "gets something if it can be got" $ do
       cache <- createCache (Just 1) get
@@ -69,3 +76,9 @@ testCache = do
       let first = fst result
       let second = snd result
       first `shouldNotBe` second
+    it "safely handles exceptions" $ do
+      cache <- createCache (Just 1) get
+      thread1 <- async $ cacheGet "exception" cache
+      value <- cacheGet "one" cache
+      threadValue <- catchAny (wait thread1) $ const (return (Just 0)) 
+      (value, threadValue) `shouldBe` (Just 1, Just 0)
