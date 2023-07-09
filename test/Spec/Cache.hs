@@ -5,6 +5,8 @@ import RIO
 import System.Random
 import Test.Hspec
 
+import qualified RIO.Map as Map
+
 get :: Text -> IO (Maybe Int)
 get "one" = return $ Just 1
 get "two" = return $ Just 2
@@ -82,3 +84,39 @@ testCache = do
       value <- cacheGet "one" cache
       threadValue <- catchAny (wait thread1) $ const (return (Just 0)) 
       (value, threadValue) `shouldBe` (Just 1, Just 0)
+  describe "clearCache" $ do
+    it "clears the cache" $ do
+      cache <- createCache Nothing get
+      first <- cacheGet "random" cache
+      second <- cacheGet "random" cache
+      clearCache cache
+      third <- cacheGet "random" cache
+      first `shouldBe` second
+      first `shouldNotBe` third
+  describe "cachePut" $ do
+    it "puts a value directly into the cache" $ do
+      cache <- createCache Nothing get
+      cachePut "random" (Just 0) cache
+      zero <- cacheGet "random" cache
+      zero `shouldBe` Just 0
+      cachePut "random" Nothing cache
+      rand <- cacheGet "random" cache
+      rand `shouldNotBe` Just 0
+  describe "setCache" $ do
+    it "sets all entries in the cache" $ do
+      cache <- createCache (Just 1) get
+      setCache (Map.singleton "random" 1) cache
+      one <- cacheGet "random" cache
+      one `shouldBe` Just 1
+      threadDelay 1100000
+      rand <- cacheGet "random" cache
+      rand `shouldNotBe` Just 1
+  describe "newCache" $ do
+    it "creates a new Cache with preset values" $ do
+      cache <- newCache Nothing get $ Map.singleton "random" 0 
+      zero <- cacheGet "random" cache
+      two <- cacheGet "two" cache
+      (zero, two) `shouldBe` (Just 0, Just 2)
+      clearCache cache
+      rand <- cacheGet "random" cache
+      rand `shouldNotBe` Just 0
