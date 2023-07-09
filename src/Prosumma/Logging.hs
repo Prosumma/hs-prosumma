@@ -28,6 +28,7 @@ initDefaultLogging = logOptionsHandle stderr True <&> setLogUseTime True . setLo
 withInitLogging :: HasLogFunc s => IO LogOptions -> RIO s a -> RIO s a
 withInitLogging initLogging app = liftIO initLogging >>= withLogging app
 
+-- | Creates and sets the @LogFunc@ in @s@, then calls @runRIO@.
 withLogging :: HasLogFunc s => RIO s a -> LogOptions -> RIO s a
 withLogging app options = do
   state <- ask
@@ -38,5 +39,8 @@ withLogging app options = do
 withDefaultLogging :: HasLogFunc s => RIO s a -> RIO s a
 withDefaultLogging = withInitLogging initDefaultLogging
 
+-- | This function is used to forward the @LogFunc@, usually to another Monad
+--
+-- For an example, see @Prosumma.PG.run@.
 withLogFunc :: (MonadReader env m, HasLogFunc env) => (LogFunc -> m a) -> m a
 withLogFunc action = asks (^.logFuncL) >>= action 
