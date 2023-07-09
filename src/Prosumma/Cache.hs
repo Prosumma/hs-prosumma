@@ -60,5 +60,10 @@ cacheGetEntry key Cache{..} = do
           putMVar cacheStore $ Map.insert key ne store 
           return $ Just ne
 
+-- | Gets an entry from the given @Cache@. This operation is thread-safe.
+--
+-- If there's a cache miss because the entry is not present or is stale,
+-- the @cacheFetch@ function passed to @createCache@ is used to attempt
+-- to fetch the value. 
 cacheGet :: (Ord k, MonadIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = (entryValue <$>) <$> cacheGetEntry key cache 
