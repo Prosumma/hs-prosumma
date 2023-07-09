@@ -25,6 +25,9 @@ isEntryStale (Just seconds) Entry{..} = do
   now <- liftIO getCurrentTime
   return $ round (diffUTCTime now entryTime) >= seconds
 
+-- | Provides a simple, thread-safe cache in memory.
+--
+-- This should not be used to store large amounts of data.
 data Cache k v = Cache {
   cacheStore :: !(MVar (Map k (Entry v))),
   cacheTTL   :: !(Maybe Int),
