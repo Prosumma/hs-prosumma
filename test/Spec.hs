@@ -1,4 +1,5 @@
 import RIO
+import Spec.Cache
 import Spec.Crypto
 import Spec.Exceptions
 import Spec.Settings
@@ -8,6 +9,7 @@ import Test.Hspec
 
 main :: IO ()
 main = hspec $ do
+  testCache
   testCrypto
   testExceptions
   testTextual
