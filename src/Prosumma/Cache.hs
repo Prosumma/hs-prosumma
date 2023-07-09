@@ -11,10 +11,13 @@ module Prosumma.Cache (
   clearCache,
   createCache,
   cacheGet,
+  cacheGetResult,
   cachePut,
   newCache,
+  resultGet,
   setCache,
-  Cache
+  Cache,
+  Result(..)
 ) where
 
 import Data.Time
@@ -66,29 +69,50 @@ setCache newStore Cache{..} = do
   now <- liftIO getCurrentTime
   void $ swapMVar cacheStore $ Map.map (Entry now) newStore
 
-cacheGetEntry :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe (Entry v))
-cacheGetEntry key Cache{..} = do
+-- | Gives detailed information about the result of a cache retrieval.
+--
+-- @Cache v@ indicates that the result was retrieved directly from the cache.
+-- @Fetched True (Maybe v)@ indicates that a value was in the cache but it had
+-- to be refetched because it had expired.
+-- @Fetched False (Maybe v)@ indicates that a value was not in the cache and
+-- had to be fetched.
+--
+-- This is chiefly important in unit tests.
+data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
+
+resultGet :: Result v -> Maybe v
+resultGet (Cached v) = Just v
+resultGet (Fetched _ (Just v)) = Just v
+resultGet (Fetched _ Nothing) = Nothing
+
+-- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
+cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
+cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
   case Map.lookup key store of
     Just entry -> do
       isStale <- isEntryStale cacheTTL entry
       if isStale
-        then cacheFetchEntry store 
+        then do
+          entry <- cacheFetchEntry store
+          return $ Fetched True (entryValue <$> entry)
         else do
           putMVar cacheStore store
-          return $ Just entry
-    Nothing -> cacheFetchEntry store 
+          return $ Cached (entryValue entry) 
+    Nothing -> do
+      entry <- cacheFetchEntry store
+      return $ Fetched False (entryValue <$> entry)
   where
     cacheFetchEntry store = do
       maybeValue <- catchAny (liftIO $ cacheFetch key) $ handleException store
       case maybeValue of
-        Nothing -> do
-          putMVar cacheStore store
-          return Nothing
         Just value -> do 
           ne <- newEntry value
-          putMVar cacheStore $ Map.insert key ne store 
-          return $ Just ne
+          putMVar cacheStore (Map.insert key ne store)
+          return $ Just ne 
+        Nothing -> do
+          putMVar cacheStore store
+          return Nothing 
     handleException store e = do
       putMVar cacheStore store
       throwIO e
@@ -99,7 +123,7 @@ cacheGetEntry key Cache{..} = do
 -- the @cacheFetch@ function passed to @createCache@ is used to attempt
 -- to fetch the value. 
 cacheGet :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
-cacheGet key cache = (entryValue <$>) <$> cacheGetEntry key cache 
+cacheGet key cache = resultGet <$> cacheGetResult key cache 
 
 -- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
 cachePut :: (Ord k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
