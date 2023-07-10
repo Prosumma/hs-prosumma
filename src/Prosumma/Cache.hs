@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, TupleSections #-}
 
 -- | Provides a thread-safe in-memory cache.
 --
@@ -97,8 +97,7 @@ data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
 
 resultGet :: Result v -> Maybe v
 resultGet (Cached v) = Just v
-resultGet (Fetched _ (Just v)) = Just v
-resultGet (Fetched _ Nothing) = Nothing
+resultGet (Fetched _ maybeValue) = maybeValue 
 
 -- | An internal function that implements the logic used by @cacheGetStatus@ but
 -- does not require an @MVar@. 
@@ -132,10 +131,9 @@ storeGetResult ttl fetch key store = do
   status <- storeGetStatus key ttl store
   case status of
     Cached v -> return (store, Cached v) 
-    Fetched isStale _ -> do
+    Fetched isStale _ -> do 
       maybeValue <- liftIO $ fetch key
-      resultStore <- storePut key maybeValue store
-      return (resultStore, Fetched isStale maybeValue)
+      storePut key maybeValue store <&> (, Fetched isStale maybeValue)
 
 -- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
 cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
