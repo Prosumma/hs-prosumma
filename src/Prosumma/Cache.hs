@@ -31,6 +31,8 @@ data Entry v = Entry {
   entryValue :: !v
 }
 
+type Store k v = Map k (Entry v)
+
 newEntry :: MonadIO m => v -> m (Entry v)
 newEntry value = Entry <$> liftIO getCurrentTime <*> pure value 
 
@@ -44,23 +46,35 @@ isEntryStale (Just seconds) Entry{..} = do
 --
 -- This should not be used to store large amounts of data.
 data Cache k v = Cache {
-  cacheStore :: !(MVar (Map k (Entry v))),
+  cacheStore :: !(MVar (Store k v)), 
   cacheTTL   :: !(Maybe Int),
   cacheFetch :: !(k -> IO (Maybe v))
 }
 
+-- | Creates a brand new, empty cache.
+-- 
+-- Passing @Nothing@ for the @cacheTTL@ parameter means that cache entries never expire.
+-- Passing any value less than or equal to 0 results in a cache which never caches. 
+-- It will always refetch entries. This will work, but there's not much point in it
+-- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
 createCache :: MonadIO m => Maybe Int -> (k -> IO (Maybe v)) -> m (Cache k v)
 createCache cacheTTL cacheFetch = do
   cacheStore <- newMVar Map.empty
   return Cache{..}
 
 -- | Creates a cache and also initializes it.
+--
+-- Passing @Nothing@ for the @cacheTTL@ parameter means that cache entries never expire.
+-- Passing any value less than or equal to 0 results in a cache which never caches. 
+-- It will always refetch entries. This will work, but there's not much point in it
+-- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
 newCache :: MonadIO m => Maybe Int -> (k -> IO (Maybe v)) -> Map k v -> m (Cache k v)
 newCache ttl fetch store = do
   cache <- createCache ttl fetch 
   setCache store cache
   return cache
 
+-- | Pretty clear what this does, eh?
 clearCache :: MonadIO m => Cache k v -> m ()
 clearCache Cache{..} = void $ swapMVar cacheStore Map.empty 
 
@@ -86,7 +100,11 @@ resultGet (Cached v) = Just v
 resultGet (Fetched _ (Just v)) = Just v
 resultGet (Fetched _ Nothing) = Nothing
 
-storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Map k (Entry v) -> m (Result v)
+-- | An internal function that implements the logic used by @cacheGetStatus@ but
+-- does not require an @MVar@. 
+--
+-- Used internally by @cacheGetStatus@ and @cacheGetResult@.
+storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
 storeGetStatus key ttl store = do
   case Map.lookup key store of
     Just entry -> do
@@ -107,28 +125,27 @@ storeGetStatus key ttl store = do
 cacheGetStatus :: (Ord k, MonadIO m) => k -> Cache k v -> m (Result v)
 cacheGetStatus key Cache{..} = readMVar cacheStore >>= storeGetStatus key cacheTTL 
 
+-- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
+-- Used by @cacheGetResult@.
+storeGetResult :: (Ord k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
+storeGetResult ttl fetch key store = do
+  status <- storeGetStatus key ttl store
+  case status of
+    Cached v -> return (store, Cached v) 
+    Fetched isStale _ -> do
+      maybeValue <- liftIO $ fetch key
+      resultStore <- storePut key maybeValue store
+      return (resultStore, Fetched isStale maybeValue)
+
 -- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
 cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
-  status <- storeGetStatus key cacheTTL store
-  case status of
-    Cached v -> putMVar cacheStore store >> return (Cached v) 
-    Fetched isStale _ -> Fetched isStale <$> cacheFetchValue store 
+  (resultStore, result) <- catchAny (storeGetResult cacheTTL cacheFetch key store) (handleException store) 
+  putMVar cacheStore resultStore
+  return result
   where
-    cacheFetchValue store = do
-      maybeValue <- catchAny (liftIO $ cacheFetch key) $ handleException store
-      case maybeValue of
-        Just value -> do
-          ne <- newEntry value
-          putMVar cacheStore (Map.insert key ne store)
-          return $ Just (entryValue ne)
-        Nothing -> do
-          putMVar cacheStore (Map.delete key store) 
-          return Nothing 
-    handleException store e = do
-      putMVar cacheStore store
-      throwIO e
+    handleException store e = putMVar cacheStore store >> throwIO e
 
 -- | Gets an entry from the given @Cache@. This operation is thread-safe.
 --
@@ -138,12 +155,11 @@ cacheGetResult key Cache{..} = do
 cacheGet :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultGet <$> cacheGetResult key cache 
 
+-- | Implements the internal logic of @cachePut@. Also used by @cacheGetResult@.
+storePut :: (Ord k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
+storePut key (Just value) store = newEntry value <&> \ne -> Map.insert key ne store 
+storePut key Nothing store = return $ Map.delete key store 
+
 -- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
 cachePut :: (Ord k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
-cachePut key (Just value) Cache{..} = do
-  ne <- newEntry value
-  store <- takeMVar cacheStore
-  putMVar cacheStore $ Map.insert key ne store
-cachePut key Nothing Cache{..} = do 
-  store <- takeMVar cacheStore
-  putMVar cacheStore $ Map.delete key store
+cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore 
