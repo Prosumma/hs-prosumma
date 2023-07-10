@@ -8,11 +8,12 @@
 --
 -- Order of arguments closely follows those used for @Map@.
 module Prosumma.Cache (
-  clearCache,
-  createCache,
   cacheGet,
   cacheGetResult,
+  cacheGetStatus,
   cachePut,
+  clearCache,
+  createCache,
   newCache,
   resultGet,
   setCache,
@@ -20,8 +21,8 @@ module Prosumma.Cache (
   Result(..)
 ) where
 
-import Data.Time
 import RIO 
+import RIO.Time
 
 import qualified RIO.Map as Map
 
@@ -85,33 +86,45 @@ resultGet (Cached v) = Just v
 resultGet (Fetched _ (Just v)) = Just v
 resultGet (Fetched _ Nothing) = Nothing
 
+storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Map k (Entry v) -> m (Result v)
+storeGetStatus key ttl store = do
+  case Map.lookup key store of
+    Just entry -> do
+      isStale <- isEntryStale ttl entry
+      return $ if isStale then Fetched True Nothing else Cached (entryValue entry)
+    Nothing -> return $ Fetched False Nothing  
+
+-- | Gets the status of an entry using the @Result@ type. 
+--
+-- @cacheGetStatus@ never fetches a value. It simply returns an indication
+-- of what the @Cache@ would have to do given the status of the entry.
+--
+-- - @Cached v@ - The value is cached and not stale.
+-- - @Fetched True Nothing@ - The value is cached but stale and would have to be refetched.
+-- - @Fetched False Nothing@ - The value is not present in the cache.
+--
+-- The second parameter of @Fetched@ will always be @Nothing@.
+cacheGetStatus :: (Ord k, MonadIO m) => k -> Cache k v -> m (Result v)
+cacheGetStatus key Cache{..} = readMVar cacheStore >>= storeGetStatus key cacheTTL 
+
 -- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
 cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
-  case Map.lookup key store of
-    Just entry -> do
-      isStale <- isEntryStale cacheTTL entry
-      if isStale
-        then do
-          entry <- cacheFetchEntry store
-          return $ Fetched True (entryValue <$> entry)
-        else do
-          putMVar cacheStore store
-          return $ Cached (entryValue entry) 
-    Nothing -> do
-      entry <- cacheFetchEntry store
-      return $ Fetched False (entryValue <$> entry)
+  status <- storeGetStatus key cacheTTL store
+  case status of
+    Cached v -> putMVar cacheStore store >> return (Cached v) 
+    Fetched isStale _ -> Fetched isStale <$> cacheFetchValue store 
   where
-    cacheFetchEntry store = do
+    cacheFetchValue store = do
       maybeValue <- catchAny (liftIO $ cacheFetch key) $ handleException store
       case maybeValue of
-        Just value -> do 
+        Just value -> do
           ne <- newEntry value
           putMVar cacheStore (Map.insert key ne store)
-          return $ Just ne 
+          return $ Just (entryValue ne)
         Nothing -> do
-          putMVar cacheStore store
+          putMVar cacheStore (Map.delete key store) 
           return Nothing 
     handleException store e = do
       putMVar cacheStore store

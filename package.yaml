@@ -45,7 +45,6 @@ dependencies:
 - string-conversions
 - template-haskell
 - text
-- time
 - triplesec
 
 ghc-options:
