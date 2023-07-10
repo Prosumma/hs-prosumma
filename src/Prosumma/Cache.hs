@@ -33,6 +33,26 @@ data Entry v = Entry {
 
 type Store k v = Map k (Entry v)
 
+-- | Provides a simple, thread-safe cache in memory.
+--
+-- This should not be used to store large amounts of data.
+data Cache k v = Cache {
+  cacheStore :: !(MVar (Store k v)), -- ^ The underlying @Store@. 
+  cacheTTL   :: !(Maybe Int), -- ^ Entry TTL expressed in seconds. @Nothing@ means it never expires.
+  cacheFetch :: !(k -> IO (Maybe v)) -- ^ Function used to (re)fetch a value if needed. 
+}
+
+-- | Gives detailed information about the result of a cache retrieval.
+--
+-- @Cache v@ indicates that the result was retrieved directly from the cache.
+-- @Fetched True (Maybe v)@ indicates that a value was in the cache but it had
+-- to be refetched because it had expired.
+-- @Fetched False (Maybe v)@ indicates that a value was not in the cache and
+-- had to be fetched.
+--
+-- This is chiefly important in unit tests.
+data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
+
 newEntry :: MonadIO m => v -> m (Entry v)
 newEntry value = Entry <$> liftIO getCurrentTime <*> pure value 
 
@@ -42,14 +62,37 @@ isEntryStale (Just seconds) Entry{..} = do
   now <- liftIO getCurrentTime
   return $ round (diffUTCTime now entryTime) >= seconds
 
--- | Provides a simple, thread-safe cache in memory.
+resultGet :: Result v -> Maybe v
+resultGet (Cached v) = Just v
+resultGet (Fetched _ maybeValue) = maybeValue 
+
+-- | An internal function that implements the logic used by @cacheGetStatus@ but
+-- does not require an @MVar@. 
 --
--- This should not be used to store large amounts of data.
-data Cache k v = Cache {
-  cacheStore :: !(MVar (Store k v)), 
-  cacheTTL   :: !(Maybe Int),
-  cacheFetch :: !(k -> IO (Maybe v))
-}
+-- Used internally by @cacheGetStatus@ and @cacheGetResult@.
+storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
+storeGetStatus key ttl store = do
+  case Map.lookup key store of
+    Just entry -> do
+      isStale <- isEntryStale ttl entry
+      return $ if isStale then Fetched True Nothing else Cached (entryValue entry)
+    Nothing -> return $ Fetched False Nothing  
+
+-- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
+-- Used by @cacheGetResult@.
+storeGetResult :: (Ord k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
+storeGetResult ttl fetch key store = do
+  status <- storeGetStatus key ttl store
+  case status of
+    Cached v -> return (store, Cached v) 
+    Fetched isStale _ -> do 
+      maybeValue <- liftIO $ fetch key
+      storePut key maybeValue store <&> (, Fetched isStale maybeValue)
+
+-- | Implements the internal logic of @cachePut@. Also used by @cacheGetResult@.
+storePut :: (Ord k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
+storePut key (Just value) store = newEntry value <&> \ne -> Map.insert key ne store 
+storePut key Nothing store = return $ Map.delete key store 
 
 -- | Creates a brand new, empty cache.
 -- 
@@ -84,33 +127,6 @@ setCache newStore Cache{..} = do
   now <- liftIO getCurrentTime
   void $ swapMVar cacheStore $ Map.map (Entry now) newStore
 
--- | Gives detailed information about the result of a cache retrieval.
---
--- @Cache v@ indicates that the result was retrieved directly from the cache.
--- @Fetched True (Maybe v)@ indicates that a value was in the cache but it had
--- to be refetched because it had expired.
--- @Fetched False (Maybe v)@ indicates that a value was not in the cache and
--- had to be fetched.
---
--- This is chiefly important in unit tests.
-data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
-
-resultGet :: Result v -> Maybe v
-resultGet (Cached v) = Just v
-resultGet (Fetched _ maybeValue) = maybeValue 
-
--- | An internal function that implements the logic used by @cacheGetStatus@ but
--- does not require an @MVar@. 
---
--- Used internally by @cacheGetStatus@ and @cacheGetResult@.
-storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
-storeGetStatus key ttl store = do
-  case Map.lookup key store of
-    Just entry -> do
-      isStale <- isEntryStale ttl entry
-      return $ if isStale then Fetched True Nothing else Cached (entryValue entry)
-    Nothing -> return $ Fetched False Nothing  
-
 -- | Gets the status of an entry using the @Result@ type. 
 --
 -- @cacheGetStatus@ never fetches a value. It simply returns an indication
@@ -123,17 +139,6 @@ storeGetStatus key ttl store = do
 -- The second parameter of @Fetched@ will always be @Nothing@.
 cacheGetStatus :: (Ord k, MonadIO m) => k -> Cache k v -> m (Result v)
 cacheGetStatus key Cache{..} = readMVar cacheStore >>= storeGetStatus key cacheTTL 
-
--- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
--- Used by @cacheGetResult@.
-storeGetResult :: (Ord k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
-storeGetResult ttl fetch key store = do
-  status <- storeGetStatus key ttl store
-  case status of
-    Cached v -> return (store, Cached v) 
-    Fetched isStale _ -> do 
-      maybeValue <- liftIO $ fetch key
-      storePut key maybeValue store <&> (, Fetched isStale maybeValue)
 
 -- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
 cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
@@ -152,11 +157,6 @@ cacheGetResult key Cache{..} = do
 -- to fetch the value. 
 cacheGet :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultGet <$> cacheGetResult key cache 
-
--- | Implements the internal logic of @cachePut@. Also used by @cacheGetResult@.
-storePut :: (Ord k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
-storePut key (Just value) store = newEntry value <&> \ne -> Map.insert key ne store 
-storePut key Nothing store = return $ Map.delete key store 
 
 -- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
 cachePut :: (Ord k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
