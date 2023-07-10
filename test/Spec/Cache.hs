@@ -62,4 +62,7 @@ testCache = do
       cachePut "random" (Just 0) cache
       value1 <- cacheGet "random" cache
       value1 `shouldBe` Just 0
+      cachePut "random" Nothing cache
+      rand <- cacheGet "random" cache
+      rand `shouldNotBe` value1
 
