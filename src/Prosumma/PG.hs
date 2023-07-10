@@ -9,11 +9,13 @@ module Prosumma.PG (
   query,
   query1_,
   query1,
+  runPG,
   value1_,
   value1,
   ConnectionPool,
   ConnectionRunner(..),
-  PG(..)
+  PG(..),
+  RPG,
 ) where
 
 import Control.Composition
@@ -70,6 +72,11 @@ instance ConnectionRunner Connection where
 --
 -- Of course, @r@ must implement @ConnectionRunner@ for it to work.
 data PG r = PG { pgConnectionRunner :: r, pgLogFunc :: LogFunc }
+
+type RPG r = RIO (PG r)
+
+runPG :: MonadIO m => r -> LogFunc -> RPG r a -> m a
+runPG runner logFunc = runRIO (PG runner logFunc)
 
 instance HasLogFunc (PG r) where
   logFuncL = lens pgLogFunc $ \context pgLogFunc -> context{pgLogFunc}
