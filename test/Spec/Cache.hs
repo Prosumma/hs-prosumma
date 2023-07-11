@@ -5,7 +5,7 @@ import RIO
 import System.Random
 import Test.Hspec
 
-import qualified RIO.Map as Map
+import qualified RIO.HashMap as HM
 
 get :: Text -> IO (Maybe Int)
 get "random" = Just <$> randomRIO (1, 100000)
@@ -20,11 +20,11 @@ testCache = do
       result <- cacheGetResult "random" cache
       result `shouldBe` Fetched False (resultGet result)
     it "fulfills from the cache when a value is present" $ do
-      cache <- newCache Nothing get $ Map.singleton "random" 0 
+      cache <- newCache Nothing get $ HM.singleton "random" 0 
       result <- cacheGetResult "random" cache
       result `shouldBe` Cached 0
     it "fetches a value when a cached value is stale" $ do
-      cache <- newCache (Just 0) get $ Map.singleton "random" 0
+      cache <- newCache (Just 0) get $ HM.singleton "random" 0
       result <- cacheGetResult "random" cache
       result `shouldBe` Fetched True (resultGet result)
   describe "cacheGet (and thus cacheGetResult)" $ do
@@ -43,7 +43,7 @@ testCache = do
       value `shouldNotBe` Nothing
   describe "newCache" $ do
     it "creates a cache with initial defaults" $ do
-      cache <- newCache (Just 1) get $ Map.singleton "random" 0
+      cache <- newCache (Just 1) get $ HM.singleton "random" 0
       value1 <- cacheGet "random" cache
       value1 `shouldBe` Just 0
       threadDelay 1100000

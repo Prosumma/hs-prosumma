@@ -24,14 +24,14 @@ module Prosumma.Cache (
 import RIO 
 import RIO.Time
 
-import qualified RIO.Map as Map
+import qualified RIO.HashMap as HM
 
 data Entry v = Entry {
   entryTime :: !UTCTime,
   entryValue :: !v
 }
 
-type Store k v = Map k (Entry v)
+type Store k v = HashMap k (Entry v)
 
 -- | Provides a simple, thread-safe cache in memory.
 --
@@ -70,9 +70,9 @@ resultGet (Fetched _ maybeValue) = maybeValue
 -- does not require an @MVar@. 
 --
 -- Used internally by @cacheGetStatus@ and @cacheGetResult@.
-storeGetStatus :: (Ord k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
+storeGetStatus :: (Hashable k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
 storeGetStatus key ttl store = do
-  case Map.lookup key store of
+  case HM.lookup key store of
     Just entry -> do
       isStale <- isEntryStale ttl entry
       return $ if isStale then Fetched True Nothing else Cached (entryValue entry)
@@ -80,7 +80,7 @@ storeGetStatus key ttl store = do
 
 -- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
 -- Used by @cacheGetResult@.
-storeGetResult :: (Ord k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
+storeGetResult :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
 storeGetResult ttl fetch key store = do
   status <- storeGetStatus key ttl store
   case status of
@@ -90,9 +90,9 @@ storeGetResult ttl fetch key store = do
       storePut key maybeValue store <&> (, Fetched isStale maybeValue)
 
 -- | Implements the internal logic of @cachePut@. Also used by @cacheGetResult@.
-storePut :: (Ord k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
-storePut key (Just value) store = newEntry value <&> \ne -> Map.insert key ne store 
-storePut key Nothing store = return $ Map.delete key store 
+storePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
+storePut key (Just value) store = newEntry value <&> \ne -> HM.insert key ne store 
+storePut key Nothing store = return $ HM.delete key store 
 
 -- | Creates a brand new, empty cache.
 -- 
@@ -100,9 +100,9 @@ storePut key Nothing store = return $ Map.delete key store
 -- Passing any value less than or equal to 0 results in a cache which never caches. 
 -- It will always refetch entries. This will work, but there's not much point in it
 -- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
-createCache :: MonadIO m => Maybe Int -> (k -> IO (Maybe v)) -> m (Cache k v)
+createCache :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> m (Cache k v)
 createCache cacheTTL cacheFetch = do
-  cacheStore <- newMVar Map.empty
+  cacheStore <- newMVar mempty 
   return Cache{..}
 
 -- | Creates a cache and also initializes it.
@@ -111,21 +111,21 @@ createCache cacheTTL cacheFetch = do
 -- Passing any value less than or equal to 0 results in a cache which never caches. 
 -- It will always refetch entries. This will work, but there's not much point in it
 -- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
-newCache :: MonadIO m => Maybe Int -> (k -> IO (Maybe v)) -> Map k v -> m (Cache k v)
+newCache :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> HashMap k v -> m (Cache k v)
 newCache ttl fetch store = do
   cache <- createCache ttl fetch 
   setCache store cache
   return cache
 
 -- | Pretty clear what this does, eh?
-clearCache :: MonadIO m => Cache k v -> m ()
-clearCache Cache{..} = void $ swapMVar cacheStore Map.empty 
+clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
+clearCache Cache{..} = void $ swapMVar cacheStore mempty 
 
 -- | Sets the entire contents of the @Cache@ to the new values.
-setCache :: MonadIO m => Map k v -> Cache k v -> m ()
+setCache :: MonadIO m => HashMap k v -> Cache k v -> m ()
 setCache newStore Cache{..} = do
   now <- liftIO getCurrentTime
-  void $ swapMVar cacheStore $ Map.map (Entry now) newStore
+  void $ swapMVar cacheStore $ HM.map (Entry now) newStore
 
 -- | Gets the status of an entry using the @Result@ type. 
 --
@@ -137,11 +137,11 @@ setCache newStore Cache{..} = do
 -- - @Fetched False Nothing@ - The value is not present in the cache.
 --
 -- The second parameter of @Fetched@ will always be @Nothing@.
-cacheGetStatus :: (Ord k, MonadIO m) => k -> Cache k v -> m (Result v)
+cacheGetStatus :: (Hashable k, MonadIO m) => k -> Cache k v -> m (Result v)
 cacheGetStatus key Cache{..} = readMVar cacheStore >>= storeGetStatus key cacheTTL 
 
 -- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
-cacheGetResult :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
+cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
   (resultStore, result) <- catchAny (storeGetResult cacheTTL cacheFetch key store) (handleException store) 
@@ -155,9 +155,9 @@ cacheGetResult key Cache{..} = do
 -- If there's a cache miss because the entry is not present or is stale,
 -- the @cacheFetch@ function passed to @createCache@ is used to attempt
 -- to fetch the value. 
-cacheGet :: (Ord k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
+cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultGet <$> cacheGetResult key cache 
 
 -- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
-cachePut :: (Ord k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
+cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
 cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore 
