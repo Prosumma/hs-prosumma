@@ -27,6 +27,7 @@ library
   exposed-modules:
       Prosumma
       Prosumma.AWS
+      Prosumma.AWS.DynamoDB
       Prosumma.Cache
       Prosumma.Crypto
       Prosumma.Environment
@@ -122,6 +123,7 @@ test-suite prosumma-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Spec.AWS.DynamoDB
       Spec.Cache
       Spec.Crypto
       Spec.Exceptions
