@@ -3,6 +3,7 @@
 module Spec.Settings (testSettings) where
 
 import Amazonka.DynamoDB
+import Prosumma.AWS.DynamoDB
 import Prosumma.Settings
 import Prosumma.Util
 import RIO
@@ -52,4 +53,4 @@ testSettings = do
       let ageName = "age"
       let row2 = newRow ageName integerAttribute
       let rows = [row1, row2]
-      readPersonSettings rows `shouldBe` Left (printf lookupErrorIncorrectType ageName)
+      readPersonSettings rows `shouldBe` Left (printf readErrorIncorrectType ageName)

@@ -3,6 +3,8 @@
 module Prosumma.AWS.DynamoDB (
   AttributeValue,
   lookupAttributeValue,
+  readErrorKeyNotFound,
+  readErrorIncorrectType,
   readTableItem,
   readTableItemWithIndex,
   scanTable,
