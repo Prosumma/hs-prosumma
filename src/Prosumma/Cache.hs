@@ -18,7 +18,8 @@ module Prosumma.Cache (
   resultToMaybe,
   setCache,
   Cache,
-  Result(..)
+  Result(..),
+  TTL
 ) where
 
 import RIO 
@@ -32,13 +33,14 @@ data Entry v = Entry {
 }
 
 type Store k v = HashMap k (Entry v)
+type TTL = NominalDiffTime 
 
 -- | Provides a simple, thread-safe cache in memory.
 --
 -- This should not be used to store large amounts of data.
 data Cache k v = Cache {
   cacheStore :: !(MVar (Store k v)), -- ^ The underlying @Store@. 
-  cacheTTL   :: !(Maybe Int), -- ^ Entry TTL expressed in seconds. @Nothing@ means it never expires.
+  cacheTTL   :: !(Maybe TTL), -- ^ Entry TTL expressed in seconds. @Nothing@ means it never expires.
   cacheFetch :: !(k -> IO (Maybe v)) -- ^ Function used to (re)fetch a value if needed. 
 }
 
@@ -56,11 +58,11 @@ data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
 newEntry :: MonadIO m => v -> m (Entry v)
 newEntry value = Entry <$> liftIO getCurrentTime <*> pure value 
 
-isEntryStale :: MonadIO m => Maybe Int -> Entry v -> m Bool
+isEntryStale :: MonadIO m => Maybe TTL -> Entry v -> m Bool
 isEntryStale Nothing _ = return False
 isEntryStale (Just seconds) Entry{..} = do
   now <- liftIO getCurrentTime
-  return $ round (diffUTCTime now entryTime) >= seconds
+  return $ diffUTCTime now entryTime > seconds
 
 resultToMaybe :: Result v -> Maybe v
 resultToMaybe (Cached v) = Just v
@@ -70,7 +72,7 @@ resultToMaybe (Fetched _ maybeValue) = maybeValue
 -- does not require an @MVar@. 
 --
 -- Used internally by @cacheGetStatus@ and @cacheGetResult@.
-storeGetStatus :: (Hashable k, MonadIO m) => k -> Maybe Int -> Store k v -> m (Result v)
+storeGetStatus :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Store k v -> m (Result v)
 storeGetStatus key ttl store = do
   case HM.lookup key store of
     Just entry -> do
@@ -80,7 +82,7 @@ storeGetStatus key ttl store = do
 
 -- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
 -- Used by @cacheGetResult@.
-storeGetResult :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
+storeGetResult :: (Hashable k, MonadIO m) => Maybe TTL -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
 storeGetResult ttl fetch key store = do
   status <- storeGetStatus key ttl store
   case status of
@@ -100,8 +102,9 @@ storePut key Nothing store = return $ HM.delete key store
 -- Passing any value less than or equal to 0 results in a cache which never caches. 
 -- It will always refetch entries. This will work, but there's not much point in it
 -- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
-createCache :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> m (Cache k v)
-createCache cacheTTL cacheFetch = do
+createCache :: (Hashable k, MonadIO m) => Maybe Int  -> (k -> IO (Maybe v)) -> m (Cache k v)
+createCache ttl cacheFetch = do
+  let cacheTTL = fromIntegral <$> ttl
   cacheStore <- newMVar mempty 
   return Cache{..}
 

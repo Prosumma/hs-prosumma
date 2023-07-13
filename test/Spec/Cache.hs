@@ -18,7 +18,7 @@ testCache = do
     it "fetches a value on cache miss" $ do
       cache <- createCache Nothing get
       result <- cacheGetResult "random" cache
-      result `shouldBe` Fetched False (resultGet result)
+      result `shouldBe` Fetched False (resultToMaybe result)
     it "fulfills from the cache when a value is present" $ do
       cache <- newCache Nothing get $ HM.singleton "random" 0 
       result <- cacheGetResult "random" cache
@@ -26,7 +26,7 @@ testCache = do
     it "fetches a value when a cached value is stale" $ do
       cache <- newCache (Just 0) get $ HM.singleton "random" 0
       result <- cacheGetResult "random" cache
-      result `shouldBe` Fetched True (resultGet result)
+      result `shouldBe` Fetched True (resultToMaybe result)
   describe "cacheGet (and thus cacheGetResult)" $ do
     it "is thread safe" $ do
       cache <- createCache Nothing get
