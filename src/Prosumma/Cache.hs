@@ -15,7 +15,7 @@ module Prosumma.Cache (
   clearCache,
   createCache,
   newCache,
-  resultGet,
+  resultToMaybe,
   setCache,
   Cache,
   Result(..)
@@ -62,9 +62,9 @@ isEntryStale (Just seconds) Entry{..} = do
   now <- liftIO getCurrentTime
   return $ round (diffUTCTime now entryTime) >= seconds
 
-resultGet :: Result v -> Maybe v
-resultGet (Cached v) = Just v
-resultGet (Fetched _ maybeValue) = maybeValue 
+resultToMaybe :: Result v -> Maybe v
+resultToMaybe (Cached v) = Just v
+resultToMaybe (Fetched _ maybeValue) = maybeValue 
 
 -- | An internal function that implements the logic used by @cacheGetStatus@ but
 -- does not require an @MVar@. 
@@ -156,7 +156,7 @@ cacheGetResult key Cache{..} = do
 -- the @cacheFetch@ function passed to @createCache@ is used to attempt
 -- to fetch the value. 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
-cacheGet key cache = resultGet <$> cacheGetResult key cache 
+cacheGet key cache = resultToMaybe <$> cacheGetResult key cache 
 
 -- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
 cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
