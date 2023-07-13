@@ -1,13 +1,13 @@
 {-# LANGUAGE DataKinds, RankNTypes, TypeApplications #-}
 
 module Prosumma.AWS.DynamoDB (
-  AttributeValue,
   lookupAttributeValue,
   readErrorKeyNotFound,
   readErrorIncorrectType,
   readTableItem,
   readTableItemWithIndex,
   scanTable,
+  AttributeValue,
   ReadAttributeValue(..),
   TableItem,
   TableReadException(..),
