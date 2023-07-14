@@ -107,20 +107,21 @@ cacheGetResult key Cache{..} = do
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
-setCache :: (Hashable k, MonadIO m) => HashMap k (Maybe v) -> Cache k v -> m ()
+setCache :: MonadIO m => HashMap k (Maybe v) -> Cache k v -> m ()
 setCache store Cache{..} = do
-  now <- lifIO getCurrentTime
+  now <- liftIO getCurrentTime
   void $ swapMVar cacheStore $ HM.map (Entry now) store
 
 clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
 clearCache = setCache mempty
 
-createCache :: (Hashable k, MonadIO m) => Maybe TTL -> Fetch k v -> m (Cache k v)
-createCache cacheTTL cacheFetch = do
+createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
+createCache ttl cacheFetch = do
   cacheStore <- newMVar mempty
+  let cacheTTL = fromIntegral <$> ttl
   return Cache{..}
 
-newCache :: (Hashable k, MonadIO m) => Maybe TTL -> Fetch k v -> HashMap k (Maybe v) -> m (Cache k v)
+newCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> HashMap k (Maybe v) -> m (Cache k v)
 newCache ttl fetch store = do 
   cache <- createCache ttl fetch
   setCache store cache
