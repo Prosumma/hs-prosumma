@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TupleSections #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Provides a thread-safe in-memory cache.
 --
@@ -9,8 +9,8 @@
 -- Order of arguments closely follows those used for @Map@.
 module Prosumma.Cache (
   cacheGet,
+  cacheGetIntent,
   cacheGetResult,
-  cacheGetStatus,
   cachePut,
   clearCache,
   createCache,
@@ -22,145 +22,106 @@ module Prosumma.Cache (
   TTL
 ) where
 
+import Prosumma.Util
 import RIO 
 import RIO.Time
 
 import qualified RIO.HashMap as HM
 
+type FetchResult v = Either SomeException (Maybe v)
+type Fetch k v = k -> IO (FetchResult v)
+type TTL = NominalDiffTime
+
 data Entry v = Entry {
-  entryTime :: !UTCTime,
-  entryValue :: !v
+  entryWhen :: !UTCTime,
+  entryValue :: !(Maybe v)
 }
 
 type Store k v = HashMap k (Entry v)
-type TTL = NominalDiffTime 
 
--- | Provides a simple, thread-safe cache in memory.
---
--- This should not be used to store large amounts of data.
 data Cache k v = Cache {
-  cacheStore :: !(MVar (Store k v)), -- ^ The underlying @Store@. 
-  cacheTTL   :: !(Maybe TTL), -- ^ Entry TTL expressed in seconds. @Nothing@ means it never expires.
-  cacheFetch :: !(k -> IO (Maybe v)) -- ^ Function used to (re)fetch a value if needed. 
+  cacheStore :: !(MVar (Store k v)),
+  cacheTTL :: !(Maybe TTL),
+  cacheFetch :: !(Fetch k v)
 }
 
--- | Gives detailed information about the result of a cache retrieval.
---
--- @Cache v@ indicates that the result was retrieved directly from the cache.
--- @Fetched True (Maybe v)@ indicates that a value was in the cache but it had
--- to be refetched because it had expired.
--- @Fetched False (Maybe v)@ indicates that a value was not in the cache and
--- had to be fetched.
---
--- This is chiefly important in unit tests.
-data Result v = Cached v | Fetched Bool (Maybe v) deriving (Eq, Ord, Show)
+newEntry :: MonadIO m => Maybe v -> m (Entry v)
+newEntry v = liftIO $ Entry <$> getCurrentTime <*> pure v
 
-newEntry :: MonadIO m => v -> m (Entry v)
-newEntry value = Entry <$> liftIO getCurrentTime <*> pure value 
+isEntryStale :: Maybe TTL -> UTCTime -> Entry v -> Bool
+isEntryStale  Nothing _ _ = False
+isEntryStale (Just ttl) now Entry{..} = diffUTCTime now entryWhen > ttl
 
-isEntryStale :: MonadIO m => Maybe TTL -> Entry v -> m Bool
-isEntryStale Nothing _ = return False
-isEntryStale (Just seconds) Entry{..} = do
+isEntryStaleM :: MonadIO m => Maybe TTL -> Entry v -> m Bool
+isEntryStaleM ttl entry = do 
   now <- liftIO getCurrentTime
-  return $ diffUTCTime now entryTime > seconds
+  return $ isEntryStale ttl now entry
+
+data Result v = Cached !(Maybe v) | Fetched !Bool !(FetchResult v) 
+type Intent = Result
 
 resultToMaybe :: Result v -> Maybe v
-resultToMaybe (Cached v) = Just v
-resultToMaybe (Fetched _ maybeValue) = maybeValue 
+resultToMaybe (Cached maybeValue) = maybeValue
+resultToMaybe _ = Nothing
 
--- | An internal function that implements the logic used by @cacheGetStatus@ but
--- does not require an @MVar@. 
---
--- Used internally by @cacheGetStatus@ and @cacheGetResult@.
-storeGetStatus :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Store k v -> m (Result v)
-storeGetStatus key ttl store = do
-  case HM.lookup key store of
-    Just entry -> do
-      isStale <- isEntryStale ttl entry
-      return $ if isStale then Fetched True Nothing else Cached (entryValue entry)
-    Nothing -> return $ Fetched False Nothing  
+storeGetIntent :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Store k v -> m (Intent v)
+storeGetIntent key ttl store = case HM.lookup key store of
+  Just entry@Entry{..} -> do 
+    isStale <- isEntryStaleM ttl entry
+    return $ if isStale then Fetched True (Right entryValue) else Cached entryValue
+  Nothing -> return $ Fetched False (Right Nothing)
 
--- | Internal function that gets a @Result@ and returns the new @Store@ and @Result@.
--- Used by @cacheGetResult@.
-storeGetResult :: (Hashable k, MonadIO m) => Maybe TTL -> (k -> IO (Maybe v)) -> k -> Store k v -> m (Store k v, Result v)
-storeGetResult ttl fetch key store = do
-  status <- storeGetStatus key ttl store
-  case status of
-    Cached v -> return (store, Cached v) 
-    Fetched isStale _ -> do 
-      maybeValue <- liftIO $ fetch key
-      storePut key maybeValue store <&> (, Fetched isStale maybeValue)
+storePut :: (Hashable k, MonadIO m) => k -> Maybe (Maybe v) -> Store k v -> m (Store k v)
+storePut key (Just entryValue) store = newEntry entryValue <&> \ne -> HM.insert key ne store
+storePut key Nothing store = return $ HM.delete key store
 
--- | Implements the internal logic of @cachePut@. Also used by @cacheGetResult@.
-storePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Store k v -> m (Store k v) 
-storePut key (Just value) store = newEntry value <&> \ne -> HM.insert key ne store 
-storePut key Nothing store = return $ HM.delete key store 
+storeGetResult :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
+storeGetResult key ttl fetch store = do
+  intent <- storeGetIntent key ttl store
+  case intent of
+    Cached v -> return (Cached v, store)
+    Fetched isStale _ -> do
+      result <- liftIO $ fetch key
+      newStore <- storePut key (hush result) store
+      return (Fetched isStale result, newStore)
 
--- | Creates a brand new, empty cache.
--- 
--- Passing @Nothing@ for the @cacheTTL@ parameter means that cache entries never expire.
--- Passing any value less than or equal to 0 results in a cache which never caches. 
--- It will always refetch entries. This will work, but there's not much point in it
--- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
-createCache :: (Hashable k, MonadIO m) => Maybe Int  -> (k -> IO (Maybe v)) -> m (Cache k v)
-createCache ttl cacheFetch = do
-  let cacheTTL = fromIntegral <$> ttl
-  cacheStore <- newMVar mempty 
-  return Cache{..}
+cacheGetIntent :: (Hashable k, MonadIO m) => k -> Cache k v -> m (Intent v)
+cacheGetIntent key Cache{..} = do 
+  store <- takeMVar cacheStore
+  intent <- storeGetIntent key cacheTTL store
+  putMVar cacheStore store
+  return intent
 
--- | Creates a cache and also initializes it.
---
--- Passing @Nothing@ for the @cacheTTL@ parameter means that cache entries never expire.
--- Passing any value less than or equal to 0 results in a cache which never caches. 
--- It will always refetch entries. This will work, but there's not much point in it
--- (except in unit tests). Speaking of units, @cacheTTL@ is expressed in seconds.
-newCache :: (Hashable k, MonadIO m) => Maybe Int -> (k -> IO (Maybe v)) -> HashMap k v -> m (Cache k v)
-newCache ttl fetch store = do
-  cache <- createCache ttl fetch 
-  setCache store cache
-  return cache
+cachePut :: (Hashable k, MonadIO m) => k -> Maybe (Maybe v) -> Cache k v -> m ()
+cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore
 
--- | Pretty clear what this does, eh?
-clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
-clearCache Cache{..} = void $ swapMVar cacheStore mempty 
-
--- | Sets the entire contents of the @Cache@ to the new values.
-setCache :: MonadIO m => HashMap k v -> Cache k v -> m ()
-setCache newStore Cache{..} = do
-  now <- liftIO getCurrentTime
-  void $ swapMVar cacheStore $ HM.map (Entry now) newStore
-
--- | Gets the status of an entry using the @Result@ type. 
---
--- @cacheGetStatus@ never fetches a value. It simply returns an indication
--- of what the @Cache@ would have to do given the status of the entry.
---
--- - @Cached v@ - The value is cached and not stale.
--- - @Fetched True Nothing@ - The value is cached but stale and would have to be refetched.
--- - @Fetched False Nothing@ - The value is not present in the cache.
---
--- The second parameter of @Fetched@ will always be @Nothing@.
-cacheGetStatus :: (Hashable k, MonadIO m) => k -> Cache k v -> m (Result v)
-cacheGetStatus key Cache{..} = readMVar cacheStore >>= storeGetStatus key cacheTTL 
-
--- | Gets the @Result@ of a cache retrieval. This operation is thread-safe.
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
-  (resultStore, result) <- catchAny (storeGetResult cacheTTL cacheFetch key store) (handleException store) 
-  putMVar cacheStore resultStore
+  (result, newStore) <- catchAny (storeGetResult key cacheTTL cacheFetch store) (handleException store)
+  putMVar cacheStore newStore
   return result
   where
     handleException store e = putMVar cacheStore store >> throwIO e
 
--- | Gets an entry from the given @Cache@. This operation is thread-safe.
---
--- If there's a cache miss because the entry is not present or is stale,
--- the @cacheFetch@ function passed to @createCache@ is used to attempt
--- to fetch the value. 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
-cacheGet key cache = resultToMaybe <$> cacheGetResult key cache 
+cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
--- | Puts a value directly into the cache, or clears it if the value passed is @Nothing@.
-cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m () 
-cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore 
+setCache :: (Hashable k, MonadIO m) => HashMap k (Maybe v) -> Cache k v -> m ()
+setCache store Cache{..} = do
+  now <- lifIO getCurrentTime
+  void $ swapMVar cacheStore $ HM.map (Entry now) store
+
+clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
+clearCache = setCache mempty
+
+createCache :: (Hashable k, MonadIO m) => Maybe TTL -> Fetch k v -> m (Cache k v)
+createCache cacheTTL cacheFetch = do
+  cacheStore <- newMVar mempty
+  return Cache{..}
+
+newCache :: (Hashable k, MonadIO m) => Maybe TTL -> Fetch k v -> HashMap k (Maybe v) -> m (Cache k v)
+newCache ttl fetch store = do 
+  cache <- createCache ttl fetch
+  setCache store cache
+  return cache
