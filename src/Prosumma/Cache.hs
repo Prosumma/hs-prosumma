@@ -11,6 +11,7 @@ module Prosumma.Cache (
   cacheGet,
   cacheGetIntent,
   cacheGetResult,
+  cacheDelete,
   cachePut,
   clearCache,
   createCache,
@@ -57,7 +58,7 @@ isEntryStaleM ttl entry = do
   now <- liftIO getCurrentTime
   return $ isEntryStale ttl now entry
 
-data Result v = Cached !(Maybe v) | Fetched !Bool !(FetchResult v) 
+data Result v = Cached !(Maybe v) | Fetched !Bool !(FetchResult v) deriving Show
 type Intent = Result
 
 resultToMaybe :: Result v -> Maybe v
@@ -94,6 +95,9 @@ cacheGetIntent key Cache{..} = do
 
 cachePut :: (Hashable k, MonadIO m) => k -> Maybe (Maybe v) -> Cache k v -> m ()
 cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore
+
+cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
+cacheDelete key = cachePut key Nothing
 
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do

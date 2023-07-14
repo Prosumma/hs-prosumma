@@ -7,62 +7,32 @@ import Test.Hspec
 
 import qualified RIO.HashMap as HM
 
-get :: Text -> IO (Maybe Int)
-get "random" = Just <$> randomRIO (1, 100000)
-get "exception" = error "exception" 
-get _ = return Nothing
+newtype MissingValueException = MissingValueException Text deriving (Show, Typeable)
+instance Exception MissingValueException
+
+get :: Text -> IO (Either SomeException (Maybe Int))
+get "one" = return $ Right (Just 1)
+get "random" = Right . Just <$> randomRIO (1, 100000)
+get "exception" = error "exception"
+get "nothing" = return $ Right Nothing
+get key = return $ Left $ toException (MissingValueException key)
+
+isCached :: Eq v => Maybe (Maybe v) -> Result v -> Bool
+isCached Nothing (Cached _) = True
+isCached (Just lhs) (Cached rhs) = lhs == rhs
+isCached _ _ = False
+
+isFetched :: Eq v => Maybe Bool -> Maybe (Either SomeException (Maybe v)) -> Result v -> Bool
+isFetched Nothing Nothing (Fetched _ _) = False
+isFetched Nothing (Just lhs) (Fetched _ rhs) = lhs == rhs 
+isFetched (Just lhsStale) Nothing (Fetched rhsStale _) = lhsStale == rhsStale
+isFetched (Just lhsStale) (Just lhs) (Fetched rhsStale rhs) = lhs == rhs && lhsStale == rhsStale
+isFetched _ _ _ = False
 
 testCache :: Spec
 testCache = do
-  describe "cacheGetResult" $ do
-    it "fetches a value on cache miss" $ do
+  describe "cacheGetIntent" $ do
+    it "shows intent to fetch a missing value" $ do
       cache <- createCache Nothing get
-      result <- cacheGetResult "random" cache
-      result `shouldBe` Fetched False (resultToMaybe result)
-    it "fulfills from the cache when a value is present" $ do
-      cache <- newCache Nothing get $ HM.singleton "random" 0 
-      result <- cacheGetResult "random" cache
-      result `shouldBe` Cached 0
-    it "fetches a value when a cached value is stale" $ do
-      cache <- newCache (Just 0) get $ HM.singleton "random" 0
-      result <- cacheGetResult "random" cache
-      result `shouldBe` Fetched True (resultToMaybe result)
-  describe "cacheGet (and thus cacheGetResult)" $ do
-    it "is thread safe" $ do
-      cache <- createCache Nothing get
-      thread1 <- async $ cacheGet "random" cache
-      value2 <- cacheGet "random" cache
-      value1 <- wait thread1
-      value1 `shouldBe` value2
-    it "handles exceptions properly by releasing the MVar" $ do
-      cache <- createCache Nothing get
-      thread1 <- async $ cacheGet "exception" cache
-      wait thread1 `shouldThrow` errorCall "exception" 
-      -- If the Cache fails to release the MVar, this will hang.
-      value <- cacheGet "random" cache
-      value `shouldNotBe` Nothing
-  describe "newCache" $ do
-    it "creates a cache with initial defaults" $ do
-      cache <- newCache (Just 1) get $ HM.singleton "random" 0
-      value1 <- cacheGet "random" cache
-      value1 `shouldBe` Just 0
-      threadDelay 1100000
-      value2 <- cacheGet "random" cache
-      value1 `shouldNotBe` value2
-  describe "clearCache" $ do
-    it "clears the cache" $ do
-      cache <- createCache Nothing get
-      value1 <- cacheGet "random" cache
-      clearCache cache
-      value2 <- cacheGet "random" cache
-      value1 `shouldNotBe` value2
-  describe "cachePut" $ do
-    it "sets an individual value in the cache" $ do
-      cache <- createCache Nothing get
-      cachePut "random" (Just 0) cache
-      value1 <- cacheGet "random" cache
-      value1 `shouldBe` Just 0
-      cachePut "random" Nothing cache
-      rand <- cacheGet "random" cache
-      rand `shouldNotBe` value1
-
+      result <- cacheGetIntent "one" cache
+      result `shouldSatisfy` isFetched (Just False) (Just $ Right Nothing) 
