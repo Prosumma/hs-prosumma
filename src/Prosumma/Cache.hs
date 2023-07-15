@@ -9,7 +9,6 @@
 -- Order of arguments closely follows those used for @Map@.
 module Prosumma.Cache (
   cacheGet,
-  cacheGetIntent,
   cacheGetResult,
   cacheDelete,
   cachePut,
@@ -19,82 +18,75 @@ module Prosumma.Cache (
   resultToMaybe,
   setCache,
   Cache,
-  Result(..),
-  TTL
+  Result(..)
 ) where
 
-import Prosumma.Util
+import Data.Either.Extra
 import RIO 
 import RIO.Time
 
 import qualified RIO.HashMap as HM
 
-type FetchResult v = Either SomeException (Maybe v)
-type Fetch k v = k -> IO (FetchResult v)
+type FetchResult v = Either SomeException v
+type Fetch k v = k -> IO v
 type TTL = NominalDiffTime
 
 data Entry v = Entry {
   entryWhen :: !UTCTime,
-  entryValue :: !(Maybe v)
+  entryValue :: !v
 }
 
 type Store k v = HashMap k (Entry v)
 
 data Cache k v = Cache {
   cacheStore :: !(MVar (Store k v)),
-  cacheTTL :: !(Maybe TTL),
+  cacheTTL   :: !(Maybe TTL),
   cacheFetch :: !(Fetch k v)
 }
 
-newEntry :: MonadIO m => Maybe v -> m (Entry v)
-newEntry v = liftIO $ Entry <$> getCurrentTime <*> pure v
-
-isEntryStale :: Maybe TTL -> UTCTime -> Entry v -> Bool
-isEntryStale  Nothing _ _ = False
-isEntryStale (Just ttl) now Entry{..} = diffUTCTime now entryWhen > ttl
-
-isEntryStaleM :: MonadIO m => Maybe TTL -> Entry v -> m Bool
-isEntryStaleM ttl entry = do 
-  now <- liftIO getCurrentTime
-  return $ isEntryStale ttl now entry
-
-data Result v = Cached !(Maybe v) | Fetched !Bool !(FetchResult v) deriving Show
-type Intent = Result
+data Result v = Cached !v | Fetched !Bool !(FetchResult v)
 
 resultToMaybe :: Result v -> Maybe v
-resultToMaybe (Cached maybeValue) = maybeValue
+resultToMaybe (Cached v) = Just v
+resultToMaybe (Fetched _ (Right v)) = Just v
 resultToMaybe _ = Nothing
 
-storeGetIntent :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Store k v -> m (Intent v)
-storeGetIntent key ttl store = case HM.lookup key store of
-  Just entry@Entry{..} -> do 
-    isStale <- isEntryStaleM ttl entry
-    return $ if isStale then Fetched True (Right entryValue) else Cached entryValue
-  Nothing -> return $ Fetched False (Right Nothing)
+data NoException = NoException deriving (Show, Typeable)
+instance Exception NoException
 
-storePut :: (Hashable k, MonadIO m) => k -> Maybe (Maybe v) -> Store k v -> m (Store k v)
-storePut key (Just entryValue) store = newEntry entryValue <&> \ne -> HM.insert key ne store
-storePut key Nothing store = return $ HM.delete key store
+noException :: SomeException
+noException = toException NoException
 
-storeGetResult :: (Hashable k, MonadIO m) => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
-storeGetResult key ttl fetch store = do
-  intent <- storeGetIntent key ttl store
-  case intent of
-    Cached v -> return (Cached v, store)
-    Fetched isStale _ -> do
-      result <- liftIO $ fetch key
-      newStore <- storePut key (hush result) store
-      return (Fetched isStale result, newStore)
+storePut :: (Hashable k, MonadIO m) => k -> FetchResult v -> Store k v -> m (Store k v)
+storePut key (Left _) store = return $ HM.delete key store 
+storePut key (Right value) store = do 
+  entry <- liftIO $ Entry <$> getCurrentTime <*> pure value
+  return $ HM.insert key entry store
 
-cacheGetIntent :: (Hashable k, MonadIO m) => k -> Cache k v -> m (Intent v)
-cacheGetIntent key Cache{..} = do 
-  store <- takeMVar cacheStore
-  intent <- storeGetIntent key cacheTTL store
-  putMVar cacheStore store
-  return intent
+storeGetResult :: (Hashable k, MonadUnliftIO m) => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
+storeGetResult key ttl fetch store = case HM.lookup key store of
+  Just Entry{..} -> do 
+    isStale <- isStaleM entryWhen 
+    if isStale
+      then getFetchResult True store 
+      else return (Cached entryValue, store)
+  Nothing -> getFetchResult False store 
+  where
+    getFetchResult isStale store = do
+      fetchResult <- liftIO $ catchAny (Right <$> fetch key) (return . Left) 
+      newStore <- storePut key fetchResult store
+      return (Fetched isStale fetchResult, newStore)
+    isStaleM entryWhen = case ttl of
+      Nothing -> return False
+      Just ttl -> do 
+        now <- liftIO getCurrentTime
+        return $ diffUTCTime now entryWhen > ttl
 
-cachePut :: (Hashable k, MonadIO m) => k -> Maybe (Maybe v) -> Cache k v -> m ()
-cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key maybeValue >>= putMVar cacheStore
+newStore :: MonadIO m => HashMap k v -> m (Store k v)
+newStore store = liftIO getCurrentTime >>= \now -> return $ HM.map (Entry now) store
+
+cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m ()
+cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key (maybeToEither noException maybeValue) >>= putMVar cacheStore
 
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
 cacheDelete key = cachePut key Nothing
@@ -102,31 +94,27 @@ cacheDelete key = cachePut key Nothing
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
-  (result, newStore) <- catchAny (storeGetResult key cacheTTL cacheFetch store) (handleException store)
-  putMVar cacheStore newStore
+  (result, resultStore) <- storeGetResult key cacheTTL cacheFetch store
+  putMVar cacheStore resultStore
   return result
-  where
-    handleException store e = putMVar cacheStore store >> throwIO e
 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
-setCache :: MonadIO m => HashMap k (Maybe v) -> Cache k v -> m ()
-setCache store Cache{..} = do
-  now <- liftIO getCurrentTime
-  void $ swapMVar cacheStore $ HM.map (Entry now) store
-
-clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
-clearCache = setCache mempty
-
 createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
 createCache ttl cacheFetch = do
-  cacheStore <- newMVar mempty
   let cacheTTL = fromIntegral <$> ttl
+  cacheStore <- newMVar mempty
   return Cache{..}
 
-newCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> HashMap k (Maybe v) -> m (Cache k v)
+setCache :: MonadIO m => HashMap k v -> Cache k v -> m ()
+setCache store Cache{..} = newStore store >>= void . swapMVar cacheStore 
+
+newCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> HashMap k v -> m (Cache k v)
 newCache ttl fetch store = do 
   cache <- createCache ttl fetch
   setCache store cache
   return cache
+
+clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
+clearCache = setCache mempty
