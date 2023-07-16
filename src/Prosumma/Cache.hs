@@ -44,7 +44,7 @@ data Cache k v = Cache {
   cacheFetch :: !(Fetch k v)
 }
 
-data Result v = Cached !v | Fetched !Bool !(FetchResult v)
+data Result v = Cached !v | Fetched !Bool !(FetchResult v) deriving Show
 
 resultToMaybe :: Result v -> Maybe v
 resultToMaybe (Cached v) = Just v
@@ -102,19 +102,16 @@ cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
 createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
-createCache ttl cacheFetch = do
-  let cacheTTL = fromIntegral <$> ttl
-  cacheStore <- newMVar mempty
-  return Cache{..}
+createCache ttl cacheFetch = newCache ttl cacheFetch mempty 
 
 setCache :: MonadIO m => HashMap k v -> Cache k v -> m ()
 setCache store Cache{..} = newStore store >>= void . swapMVar cacheStore 
 
-newCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> HashMap k v -> m (Cache k v)
-newCache ttl fetch store = do 
-  cache <- createCache ttl fetch
-  setCache store cache
-  return cache
+newCache :: MonadIO m => Maybe Int -> Fetch k v -> HashMap k v -> m (Cache k v)
+newCache ttl cacheFetch store = do 
+  let cacheTTL = fromIntegral <$> ttl
+  cacheStore <- newStore store >>= newMVar 
+  return Cache{..}
 
 clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
 clearCache = setCache mempty

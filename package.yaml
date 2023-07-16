@@ -87,6 +87,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - async
     - hspec
     - hspec-expectations
     - prosumma

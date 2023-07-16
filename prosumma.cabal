@@ -145,6 +145,7 @@ test-suite prosumma-test
     , amazonka-dynamodb >=2.0 && <3
     , amazonka-kms >=2.0 && <3
     , amazonka-sts >=2.0 && <3
+    , async
     , base >=4.7 && <5
     , composition-prelude
     , data-default
