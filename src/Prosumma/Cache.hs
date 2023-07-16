@@ -9,7 +9,9 @@
 -- Order of arguments closely follows those used for @Map@.
 module Prosumma.Cache (
   cacheGet,
+  cacheGets,
   cacheGetResult,
+  cacheGetResults,
   cacheDelete,
   cachePut,
   clearCache,
@@ -82,6 +84,15 @@ storeGetResult key ttl fetch store = case HM.lookup key store of
         now <- liftIO getCurrentTime
         return $ diffUTCTime now entryWhen > ttl
 
+storeGetResults
+  :: (Hashable k, MonadUnliftIO m)
+  => [k] -> Maybe TTL -> Fetch k v -> Store k v -> m (HashMap k (Result v), Store k v)
+storeGetResults [] _ _ store = return (mempty, store)
+storeGetResults (k:ks) ttl fetch store = do
+  (result, nextStore) <- storeGetResult k ttl fetch store
+  (resultMap, resultStore) <- storeGetResults ks ttl fetch nextStore
+  return (HM.insert k result resultMap, resultStore)
+
 newStore :: MonadIO m => HashMap k v -> m (Store k v)
 newStore store = liftIO getCurrentTime >>= \now -> return $ HM.map (Entry now) store
 
@@ -98,8 +109,18 @@ cacheGetResult key Cache{..} = do
   putMVar cacheStore resultStore
   return result
 
+cacheGetResults :: (Hashable k, MonadUnliftIO m) => [k] -> Cache k v -> m (HashMap k (Result v))
+cacheGetResults keys Cache{..} = do
+  store <- takeMVar cacheStore
+  (result, resultStore) <- storeGetResults keys cacheTTL cacheFetch store
+  putMVar cacheStore resultStore
+  return result
+
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
+
+cacheGets :: (Hashable k, MonadUnliftIO m) => [k] -> Cache k v -> m (HashMap k (Maybe v)) 
+cacheGets keys cache = HM.map resultToMaybe <$> cacheGetResults keys cache
 
 createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
 createCache ttl cacheFetch = newCache ttl cacheFetch mempty 
