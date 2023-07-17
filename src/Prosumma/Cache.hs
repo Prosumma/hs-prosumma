@@ -8,11 +8,14 @@
 --
 -- Order of arguments closely follows those used for @Map@.
 module Prosumma.Cache (
+  cacheDelete,
+  cacheDeletes,
   cacheGet,
   cacheGets,
   cacheGetResult,
   cacheGetResults,
-  cacheDelete,
+  cacheInsert,
+  cacheInserts,
   cachePut,
   cachePuts,
   clearCache,
@@ -25,7 +28,7 @@ module Prosumma.Cache (
 ) where
 
 import Data.Either.Extra
-import RIO 
+import RIO
 import RIO.Time
 
 import qualified RIO.HashMap as HM
@@ -60,7 +63,7 @@ instance Exception NoException
 noException :: SomeException
 noException = toException NoException
 
-put :: Hashable k => UTCTime -> k -> FetchResult v -> Store k v -> Store k v 
+put :: Hashable k => UTCTime -> k -> FetchResult v -> Store k v -> Store k v
 put _ key (Left _) store = HM.delete key store
 put now key (Right value) store = HM.insert key (Entry now value) store
 
@@ -70,9 +73,9 @@ storePut key value store = do
   return $ put now key value store
 
 storePuts :: (Hashable k, MonadIO m) => HashMap k (FetchResult v) -> Store k v -> m (Store k v)
-storePuts newEntries store = do 
+storePuts newEntries store = do
   now <- liftIO getCurrentTime
-  return $ HM.foldrWithKey (put now) store newEntries 
+  return $ HM.foldrWithKey (put now) store newEntries
 
 -- | See the 'cacheGetResult' function for a discussion.
 storeGetResult
@@ -89,7 +92,7 @@ storeGetResult key ttl fetch store = case (HM.lookup key store, ttl) of
         then return (Cached entryValue, store) -- Entry was found and is not stale
         else getFetchResult True store -- Entry was found but is stale
     getFetchResult isStale store = do
-      fetchResult <- liftIO $ catchAny (Right <$> fetch key) (return . Left) 
+      fetchResult <- liftIO $ catchAny (Right <$> fetch key) (return . Left)
       newStore <- storePut key fetchResult store
       return (Fetched isStale fetchResult, newStore)
 
@@ -118,6 +121,15 @@ cachePuts newEntries Cache{..} = takeMVar cacheStore
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
 cacheDelete key = cachePut key Nothing
 
+cacheDeletes :: (Hashable k, MonadIO m, Foldable f) => f k -> Cache k v -> m ()
+cacheDeletes = cachePuts . foldr (`HM.insert` Nothing) mempty
+
+cacheInsert :: (Hashable k, MonadIO m) => k -> v -> Cache k v -> m ()
+cacheInsert key value = cachePuts (HM.singleton key (Just value)) 
+
+cacheInserts :: (Hashable k, MonadIO m) => HashMap k v -> Cache k v -> m ()
+cacheInserts newEntries = cachePuts $ HM.map Just newEntries
+
 -- | Attempts to get an entry and reports the result in the 'Result' type.
 -- This function is thread-safe.
 --
@@ -144,19 +156,19 @@ cacheGetResults keys Cache{..} = do
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
-cacheGets :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Maybe v)) 
+cacheGets :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Maybe v))
 cacheGets keys cache = HM.map resultToMaybe <$> cacheGetResults keys cache
 
 createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
-createCache ttl cacheFetch = newCache ttl cacheFetch mempty 
+createCache ttl cacheFetch = newCache ttl cacheFetch mempty
 
 setCache :: MonadIO m => HashMap k v -> Cache k v -> m ()
-setCache store Cache{..} = newStore store >>= void . swapMVar cacheStore 
+setCache store Cache{..} = newStore store >>= void . swapMVar cacheStore
 
 newCache :: MonadIO m => Maybe Int -> Fetch k v -> HashMap k v -> m (Cache k v)
-newCache ttl cacheFetch store = do 
+newCache ttl cacheFetch store = do
   let cacheTTL = fromIntegral <$> ttl
-  cacheStore <- newStore store >>= newMVar 
+  cacheStore <- newStore store >>= newMVar
   return Cache{..}
 
 clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()

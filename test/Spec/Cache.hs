@@ -2,6 +2,7 @@ module Spec.Cache (testCache) where
 
 import Prosumma.Cache
 import RIO
+import RIO.HashMap.Partial ((!))
 import System.Random
 import Test.Hspec
 
@@ -70,6 +71,15 @@ testCache = do
       cachePut "random" (Just (Just 0)) cache
       value <- join <$> cacheGet "random" cache
       value `shouldBe` Just 0 
+  describe "cachePuts" $ do
+    it "puts multiple values into the cache" $ do
+      cache <- newCache Nothing get $ HM.fromList [("one", Just 5), ("random", Just 0)]
+      let newEntries = HM.fromList [("one", Nothing), ("random", Nothing), ("x", Just (Just 9))]
+      cachePuts newEntries cache
+      values <- HM.map join <$> cacheGets ["one", "random", "x"] cache
+      values ! "random" `shouldNotBe` Just 0
+      values ! "one" `shouldBe` Just 1
+      values ! "x" `shouldBe` Just 9
   describe "cacheDelete" $ do
     it "removes a value from the cache" $ do
       cache <- newCache Nothing get $ HM.singleton "ninety" (Just 90)
