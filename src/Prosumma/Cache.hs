@@ -68,23 +68,19 @@ storePut key (Right value) store = do
 storeGetResult
   :: (Hashable k, MonadUnliftIO m)
   => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
-storeGetResult key ttl fetch store = case HM.lookup key store of
-  Just Entry{..} -> do 
-    isStale <- isStaleM entryWhen 
-    if isStale
-      then getFetchResult True store 
-      else return (Cached entryValue, store)
-  Nothing -> getFetchResult False store 
+storeGetResult key ttl fetch store = case (HM.lookup key store, ttl) of
+  (Just Entry{..}, Just ttl) -> do 
+    now <- liftIO getCurrentTime
+    if diffUTCTime now entryWhen < ttl
+      then return (Cached entryValue, store)
+      else getFetchResult True store
+  (Just Entry{..}, Nothing) -> return (Cached entryValue, store) 
+  (Nothing, _) -> getFetchResult False store
   where
     getFetchResult isStale store = do
       fetchResult <- liftIO $ catchAny (Right <$> fetch key) (return . Left) 
       newStore <- storePut key fetchResult store
       return (Fetched isStale fetchResult, newStore)
-    isStaleM entryWhen = case ttl of
-      Nothing -> return False
-      Just ttl -> do 
-        now <- liftIO getCurrentTime
-        return $ diffUTCTime now entryWhen > ttl
 
 storeGetResults
   :: (Hashable k, MonadUnliftIO m, Foldable f)
