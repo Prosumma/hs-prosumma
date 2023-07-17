@@ -65,7 +65,9 @@ storePut key (Right value) store = do
   entry <- liftIO $ Entry <$> getCurrentTime <*> pure value
   return $ HM.insert key entry store
 
-storeGetResult :: (Hashable k, MonadUnliftIO m) => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
+storeGetResult
+  :: (Hashable k, MonadUnliftIO m)
+  => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
 storeGetResult key ttl fetch store = case HM.lookup key store of
   Just Entry{..} -> do 
     isStale <- isStaleM entryWhen 
@@ -85,19 +87,21 @@ storeGetResult key ttl fetch store = case HM.lookup key store of
         return $ diffUTCTime now entryWhen > ttl
 
 storeGetResults
-  :: (Hashable k, MonadUnliftIO m)
-  => [k] -> Maybe TTL -> Fetch k v -> Store k v -> m (HashMap k (Result v), Store k v)
-storeGetResults [] _ _ store = return (mempty, store)
-storeGetResults (k:ks) ttl fetch store = do
-  (result, nextStore) <- storeGetResult k ttl fetch store
-  (resultMap, resultStore) <- storeGetResults ks ttl fetch nextStore
-  return (HM.insert k result resultMap, resultStore)
+  :: (Hashable k, MonadUnliftIO m, Foldable f)
+  => f k -> Maybe TTL -> Fetch k v -> Store k v -> m (HashMap k (Result v), Store k v)
+storeGetResults keys ttl fetch store = foldM get (mempty, store) keys
+  where
+    get (results, store) key = do
+      (result, nextStore) <- storeGetResult key ttl fetch store
+      return (HM.insert key result results, nextStore)
 
 newStore :: MonadIO m => HashMap k v -> m (Store k v)
 newStore store = liftIO getCurrentTime >>= \now -> return $ HM.map (Entry now) store
 
 cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m ()
-cachePut key maybeValue Cache{..} = takeMVar cacheStore >>= storePut key (maybeToEither noException maybeValue) >>= putMVar cacheStore
+cachePut key maybeValue Cache{..} = takeMVar cacheStore
+  >>= storePut key (maybeToEither noException maybeValue)
+  >>= putMVar cacheStore
 
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
 cacheDelete key = cachePut key Nothing
@@ -109,7 +113,7 @@ cacheGetResult key Cache{..} = do
   putMVar cacheStore resultStore
   return result
 
-cacheGetResults :: (Hashable k, MonadUnliftIO m) => [k] -> Cache k v -> m (HashMap k (Result v))
+cacheGetResults :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Result v))
 cacheGetResults keys Cache{..} = do
   store <- takeMVar cacheStore
   (result, resultStore) <- storeGetResults keys cacheTTL cacheFetch store
