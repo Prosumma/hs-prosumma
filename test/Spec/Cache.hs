@@ -60,6 +60,10 @@ testCache = do
       cache <- newCache Nothing get $ HM.singleton "two" (Just 2)
       results <- HM.map join <$> cacheGets ["one", "two"] cache
       results `shouldBe` HM.fromList [("one", Just 1), ("two", Just 2)]
+    it "handles any Foldable" $ do
+      cache <- newCache Nothing get $ HM.singleton "two" (Just 2)
+      results <- cacheGets Nothing cache
+      results `shouldBe` mempty
   describe "cachePut" $ do
     it "puts a value into the cache" $ do
       cache <- createCache Nothing get

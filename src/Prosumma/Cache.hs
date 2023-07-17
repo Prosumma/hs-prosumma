@@ -14,6 +14,7 @@ module Prosumma.Cache (
   cacheGetResults,
   cacheDelete,
   cachePut,
+  cachePuts,
   clearCache,
   createCache,
   newCache,
@@ -59,24 +60,34 @@ instance Exception NoException
 noException :: SomeException
 noException = toException NoException
 
-storePut :: (Hashable k, MonadIO m) => k -> FetchResult v -> Store k v -> m (Store k v)
-storePut key (Left _) store = return $ HM.delete key store 
-storePut key (Right value) store = do 
-  entry <- liftIO $ Entry <$> getCurrentTime <*> pure value
-  return $ HM.insert key entry store
+put :: Hashable k => UTCTime -> k -> FetchResult v -> Store k v -> Store k v 
+put _ key (Left _) store = HM.delete key store
+put now key (Right value) store = HM.insert key (Entry now value) store
 
+storePut :: (Hashable k, MonadIO m) => k -> FetchResult v -> Store k v -> m (Store k v)
+storePut key value store = do
+  now <- liftIO getCurrentTime
+  return $ put now key value store
+
+storePuts :: (Hashable k, MonadIO m) => HashMap k (FetchResult v) -> Store k v -> m (Store k v)
+storePuts newEntries store = do 
+  now <- liftIO getCurrentTime
+  return $ HM.foldrWithKey (put now) store newEntries 
+
+-- | See the 'cacheGetResult' function for a discussion.
 storeGetResult
   :: (Hashable k, MonadUnliftIO m)
   => k -> Maybe TTL -> Fetch k v -> Store k v -> m (Result v, Store k v)
 storeGetResult key ttl fetch store = case (HM.lookup key store, ttl) of
-  (Just Entry{..}, Just ttl) -> do 
-    now <- liftIO getCurrentTime
-    if diffUTCTime now entryWhen < ttl
-      then return (Cached entryValue, store)
-      else getFetchResult True store
-  (Just Entry{..}, Nothing) -> return (Cached entryValue, store) 
-  (Nothing, _) -> getFetchResult False store
+  (Just entry, Just ttl) -> handleStale entry ttl store -- Check staleness
+  (Just Entry{..}, Nothing) -> return (Cached entryValue, store)  -- Entry was found, no TTL specified
+  _ -> getFetchResult False store -- Entry must be fetched
   where
+    handleStale Entry{..} ttl store = do
+      now <- liftIO getCurrentTime
+      if diffUTCTime now entryWhen < ttl
+        then return (Cached entryValue, store) -- Entry was found and is not stale
+        else getFetchResult True store -- Entry was found but is stale
     getFetchResult isStale store = do
       fetchResult <- liftIO $ catchAny (Right <$> fetch key) (return . Left) 
       newStore <- storePut key fetchResult store
@@ -99,9 +110,19 @@ cachePut key maybeValue Cache{..} = takeMVar cacheStore
   >>= storePut key (maybeToEither noException maybeValue)
   >>= putMVar cacheStore
 
+cachePuts :: (Hashable k, MonadIO m) => HashMap k (Maybe v) -> Cache k v -> m ()
+cachePuts newEntries Cache{..} = takeMVar cacheStore
+  >>= storePuts (HM.map (maybeToEither noException) newEntries)
+  >>= putMVar cacheStore
+
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
 cacheDelete key = cachePut key Nothing
 
+-- | Attempts to get an entry and reports the result in the 'Result' type.
+-- This function is thread-safe.
+--
+-- In most cases, callers will not care what the @Result@ is. They just want the
+-- value. In that case, use 'cacheGet'. 
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
 cacheGetResult key Cache{..} = do
   store <- takeMVar cacheStore
@@ -109,6 +130,9 @@ cacheGetResult key Cache{..} = do
   putMVar cacheStore resultStore
   return result
 
+-- | Same as 'cacheGetResult' but gets more than one key.
+--
+-- When attempting to get multiple keys, this method is more efficient than calling @cacheGetResult@ multiple times.
 cacheGetResults :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Result v))
 cacheGetResults keys Cache{..} = do
   store <- takeMVar cacheStore
@@ -116,10 +140,11 @@ cacheGetResults keys Cache{..} = do
   putMVar cacheStore resultStore
   return result
 
+-- | Simplified version of 'cacheGet 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
-cacheGets :: (Hashable k, MonadUnliftIO m) => [k] -> Cache k v -> m (HashMap k (Maybe v)) 
+cacheGets :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Maybe v)) 
 cacheGets keys cache = HM.map resultToMaybe <$> cacheGetResults keys cache
 
 createCache :: (Hashable k, MonadIO m) => Maybe Int -> Fetch k v -> m (Cache k v)
