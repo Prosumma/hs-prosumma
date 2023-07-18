@@ -12,6 +12,9 @@ module Prosumma.Cache (
   cacheDeletes,
   cacheGet,
   cacheGets,
+  cacheGetAll,
+  cacheGetAllResults,
+  cacheGetKeys,
   cacheGetResult,
   cacheGetResults,
   cacheInsert,
@@ -34,6 +37,8 @@ import RIO.Time
 
 import qualified RIO.HashMap as HM
 
+-- | When an entry is fetched, it can succeed or fail.
+-- @FetchResult@ tells us which of these it was.
 type FetchResult v = Either SomeException v
 type Fetch k v = k -> IO v
 type TTL = NominalDiffTime
@@ -51,7 +56,21 @@ data Cache k v = Cache {
   cacheFetch :: !(Fetch k v)
 }
 
+-- | @Result@ tells us precisely what happened when attempting to retrieve
+-- an entry from the cache.
+--
+-- The second parameter of @Fetched@ indicates whether the entry was stale or not.
+--
+-- Note that the @Eq@ instance for @Result@ is defective in the case where @FetchResult@
+-- is @Left@. It does not compare exceptions for equality, treating them all as equal.
+-- The @Eq@ instance is used for unit tests and is not much use for anything else.
 data Result v = Cached !v | Fetched !Bool !(FetchResult v) deriving Show
+
+instance Eq v => Eq (Result v) where
+  (Cached v1) == (Cached v2) = v1 == v2
+  (Fetched isStale1 (Right v1)) == (Fetched isStale2 (Right v2)) = isStale1 == isStale2 && v1 == v2
+  (Fetched isStale1 (Left _)) == (Fetched isStale2 (Left _)) = isStale1 == isStale2
+  _ == _ = False
 
 data NoException = NoException deriving (Show, Typeable)
 instance Exception NoException
@@ -156,6 +175,23 @@ cacheGetResults keys Cache{..} = do
   (result, resultStore) <- storeGetResults keys cacheTTL cacheFetch store
   putMVar cacheStore resultStore
   return result
+
+cacheGetAllResults :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Result v))
+cacheGetAllResults Cache{..} = do
+  store <- takeMVar cacheStore
+  (result, resultStore) <- storeGetResults (HM.keys store) cacheTTL cacheFetch store
+  putMVar cacheStore resultStore
+  return result
+
+cacheGetAll :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Maybe v)) 
+cacheGetAll cache = HM.map resultToMaybe <$> cacheGetAllResults cache
+
+cacheGetKeys :: MonadIO m => Cache k v -> m [k]
+cacheGetKeys Cache{..} = do
+  store <- takeMVar cacheStore
+  let keys = HM.keys store
+  putMVar cacheStore store
+  return keys
 
 -- | Simplified version of 'cacheGet 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)

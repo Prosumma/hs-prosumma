@@ -60,6 +60,12 @@ testCache = do
       let threadCount = [1..100] :: [Int]
       values <- forConcurrently threadCount $ const getRandom
       values `shouldSatisfy` allEqual
+  describe "cacheGetAll" $ do
+    it "gets all entries" $ do
+      let entries = HM.fromList [("foo", Just 999), ("bar", Just 666)]
+      cache <- newCache Nothing get entries 
+      results <- HM.map join <$> cacheGetAll cache
+      results `shouldBe` entries 
   describe "cacheGets" $ do
     it "gets many results as a HashMap" $ do
       cache <- newCache Nothing get $ HM.singleton "two" (Just 2)
