@@ -52,16 +52,20 @@ data Cache k v = Cache {
 
 data Result v = Cached !v | Fetched !Bool !(FetchResult v) deriving Show
 
-resultToMaybe :: Result v -> Maybe v
-resultToMaybe (Cached v) = Just v
-resultToMaybe (Fetched _ (Right v)) = Just v
-resultToMaybe _ = Nothing
-
 data NoException = NoException deriving (Show, Typeable)
 instance Exception NoException
 
 noException :: SomeException
 noException = toException NoException
+
+resultToMaybe :: Result v -> Maybe v
+resultToMaybe (Cached v) = Just v
+resultToMaybe (Fetched _ (Right v)) = Just v
+resultToMaybe _ = Nothing
+
+maybeToFetchResult :: Maybe v -> FetchResult v
+maybeToFetchResult (Just v) = Right v
+maybeToFetchResult Nothing = Left noException
 
 put :: Hashable k => UTCTime -> k -> FetchResult v -> Store k v -> Store k v
 put _ key (Left _) store = HM.delete key store
@@ -88,7 +92,7 @@ storeGetResult key ttl fetch store = case (HM.lookup key store, ttl) of
   where
     handleStale Entry{..} ttl store = do
       now <- liftIO getCurrentTime
-      if diffUTCTime now entryWhen < ttl
+      if diffUTCTime now entryWhen <= ttl
         then return (Cached entryValue, store) -- Entry was found and is not stale
         else getFetchResult True store -- Entry was found but is stale
     getFetchResult isStale store = do
@@ -110,12 +114,12 @@ newStore store = liftIO getCurrentTime >>= \now -> return $ HM.map (Entry now) s
 
 cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m ()
 cachePut key maybeValue Cache{..} = takeMVar cacheStore
-  >>= storePut key (maybeToEither noException maybeValue)
+  >>= storePut key (maybeToFetchResult maybeValue)
   >>= putMVar cacheStore
 
 cachePuts :: (Hashable k, MonadIO m) => HashMap k (Maybe v) -> Cache k v -> m ()
 cachePuts newEntries Cache{..} = takeMVar cacheStore
-  >>= storePuts (HM.map (maybeToEither noException) newEntries)
+  >>= storePuts (HM.map maybeToFetchResult newEntries)
   >>= putMVar cacheStore
 
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
@@ -125,7 +129,7 @@ cacheDeletes :: (Hashable k, MonadIO m, Foldable f) => f k -> Cache k v -> m ()
 cacheDeletes = cachePuts . foldr (`HM.insert` Nothing) mempty
 
 cacheInsert :: (Hashable k, MonadIO m) => k -> v -> Cache k v -> m ()
-cacheInsert key value = cachePuts (HM.singleton key (Just value)) 
+cacheInsert key = cachePut key . Just
 
 cacheInserts :: (Hashable k, MonadIO m) => HashMap k v -> Cache k v -> m ()
 cacheInserts newEntries = cachePuts $ HM.map Just newEntries
