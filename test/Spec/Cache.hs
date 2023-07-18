@@ -17,10 +17,6 @@ get "random" = Just <$> randomRIO (1, 100000)
 get "exception" = error "exception"
 get _ = return Nothing 
 
-isCached :: Eq v => v -> Result v -> Bool
-isCached a (Cached b) = a == b 
-isCached _ _ = False
-
 isFetched :: Eq v => Bool -> v -> Result v -> Bool
 isFetched staleExpected a (Fetched staleActual (Right b)) = staleExpected == staleActual && a == b 
 isFetched _ _ (Fetched _ (Left _)) = False 
@@ -36,7 +32,7 @@ testCache = do
     it "fetches an existing value from the cache" $ do
       cache <- newCache Nothing get $ HM.singleton "random" (Just 2)
       result <- cacheGetResult "random" cache
-      result `shouldSatisfy` isCached (Just 2) 
+      result `shouldBe` Cached (Just 2) 
     it "refetches a stale value from the cache" $ do
       cache <- newCache (Just 0) get $ HM.singleton "random" (Just 0)
       result <- cacheGetResult "random" cache
@@ -49,7 +45,7 @@ testCache = do
     it "fetches an unexpired value from the cache" $ do
       cache <- newCache (Just 5) get $ HM.singleton "one" (Just 1)
       result <- cacheGetResult "one" cache
-      result `shouldSatisfy` isCached (Just 1)
+      result `shouldBe` Cached (Just 1)
     it "does not cache if an exception occurs" $ do
       cache <- createCache Nothing get
       result <- cacheGetResult "exception" cache
