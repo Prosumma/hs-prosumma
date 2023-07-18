@@ -46,6 +46,10 @@ testCache = do
       cache <- createCache Nothing get
       result <- cacheGetResult "one" cache
       result `shouldSatisfy` isFetched False (Just 1)
+    it "fetches an unexpired value from the cache" $ do
+      cache <- newCache (Just 5) get $ HM.singleton "one" (Just 1)
+      result <- cacheGetResult "one" cache
+      result `shouldSatisfy` isCached (Just 1)
     it "does not cache if an exception occurs" $ do
       cache <- createCache Nothing get
       result <- cacheGetResult "exception" cache
@@ -86,6 +90,25 @@ testCache = do
       cacheDelete "ninety" cache
       value <- join <$> cacheGet "ninety" cache
       value `shouldBe` Nothing
+  describe "cacheDeletes" $ do
+    it "removes multiple values from the cache" $ do
+      cache <- newCache Nothing get $ HM.fromList [("foo", Just 999), ("bar", Just 666)]
+      cacheDeletes ["foo", "bar"] cache
+      size <- sizeCache cache
+      size `shouldBe` 0
+  describe "cacheInsert" $ do
+    it "inserts a value into the cache" $ do
+      cache <- createCache Nothing get
+      cacheInsert "foo" (Just 999) cache
+      foo <- join <$> cacheGet "foo" cache
+      foo `shouldBe` Just 999
+  describe "cacheInserts" $ do
+    it "inserts multiple values into the cache" $ do
+      let newValues = HM.fromList [("foo", Just 999), ("bar", Just 666)]
+      cache <- createCache Nothing get
+      cacheInserts newValues cache
+      values <- HM.map join <$> cacheGets ["foo", "bar"] cache
+      values `shouldBe` newValues
   describe "setCache" $ do
     it "replaces the cache with new values" $ do
       cache <- createCache Nothing get

@@ -23,6 +23,7 @@ module Prosumma.Cache (
   newCache,
   resultToMaybe,
   setCache,
+  sizeCache,
   Cache,
   Result(..)
 ) where
@@ -177,3 +178,10 @@ newCache ttl cacheFetch store = do
 
 clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
 clearCache = setCache mempty
+
+sizeCache :: MonadIO m => Cache k v -> m Int
+sizeCache Cache{..} = do 
+  store <- takeMVar cacheStore
+  let size = HM.size store
+  putMVar cacheStore store
+  return size
