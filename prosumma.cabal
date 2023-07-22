@@ -149,7 +149,65 @@ executable auth
     , warp
   default-language: Haskell2010
 
-test-suite prosumma-test
+test-suite auth-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_prosumma
+  hs-source-dirs:
+      apps/auth/test
+  default-extensions:
+      NoImplicitPrelude
+      OverloadedStrings
+      ScopedTypeVariables
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wno-name-shadowing -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HUnit
+    , aeson
+    , amazonka >=2.0 && <3
+    , amazonka-core >=2.0 && <3
+    , amazonka-dynamodb >=2.0 && <3
+    , amazonka-kms >=2.0 && <3
+    , amazonka-s3 >=2.0 && <3
+    , amazonka-sts >=2.0 && <3
+    , base >=4.7 && <5
+    , base64-bytestring
+    , bytestring
+    , composition-prelude
+    , data-default
+    , exceptions
+    , extra
+    , formatting
+    , generic-lens
+    , hspec
+    , hspec-expectations
+    , http-client
+    , http-types
+    , lens
+    , listsafe
+    , monad-control
+    , mtl
+    , postgresql-simple
+    , prosumma
+    , regex-tdfa
+    , resource-pool
+    , rio
+    , servant-auth
+    , servant-auth-server
+    , servant-client
+    , servant-server
+    , string-conversions
+    , template-haskell
+    , text
+    , text-format ==0.3.2.1
+    , triplesec
+    , unliftio
+    , uuid
+    , wai
+    , warp
+  default-language: Haskell2010
+
+test-suite library-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
