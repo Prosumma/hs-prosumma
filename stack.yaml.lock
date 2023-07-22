@@ -5,6 +5,13 @@
 
 packages:
 - completed:
+    hackage: text-format-0.3.2.1@sha256:557b3723dfdd28d015846b143cb7b63817110c724b06fce422d9b4272d96bba7,1865
+    pantry-tree:
+      sha256: cc663e9b0e02f528b35f600f9a295c22efae4dcf6b3a0c03783cfd72972982ee
+      size: 1030
+  original:
+    hackage: text-format-0.3.2.1
+- completed:
     name: amazonka
     pantry-tree:
       sha256: 2bbc87a5978cb3ae92e7f08f7b09406faa01e013a9578efcba2a8b2916af7c12
@@ -55,6 +62,19 @@ packages:
     version: '2.0'
   original:
     subdir: lib/services/amazonka-kms
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+- completed:
+    name: amazonka-s3
+    pantry-tree:
+      sha256: 96a21330a6318744e3b47700d33e57b9461cd8ca069a1069f3cefbd2ff10e92b
+      size: 38690
+    sha256: f9a2516e315ea9e8353246f632c722a0cbcd208b19404a8808ddf5ce7d5fc28b
+    size: 34731344
+    subdir: lib/services/amazonka-s3
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+    version: '2.0'
+  original:
+    subdir: lib/services/amazonka-s3
     url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
 - completed:
     name: amazonka-sso

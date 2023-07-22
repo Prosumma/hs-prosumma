@@ -25,8 +25,11 @@ dependencies:
 - amazonka-core >= 2.0 && < 3
 - amazonka-dynamodb >= 2.0 && < 3
 - amazonka-kms >= 2.0 && < 3
+- amazonka-s3 >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
+- base64-bytestring
+- bytestring
 - composition-prelude
 - data-default
 - exceptions
@@ -41,11 +44,19 @@ dependencies:
 - regex-tdfa
 - resource-pool
 - rio
+- servant-auth
+- servant-auth-server
+- servant-client
 - servant-server
 - string-conversions
 - template-haskell
 - text
+- text-format == 0.3.2.1
 - triplesec
+- unliftio
+- uuid
+- wai
+- warp
 
 ghc-options:
 - -Wall
@@ -68,9 +79,9 @@ library:
   source-dirs: src
 
 executables:
-  prosumma-exe:
+  auth:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         apps/auth/server
     ghc-options:
     - -threaded
     - -rtsopts
