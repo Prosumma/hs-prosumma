@@ -16,7 +16,7 @@ data Watusi = Watusi {
   watusiBaz :: !(Maybe Text)
 } deriving (Eq, Show)
 
-makeWatusi :: (forall v. ReadAttributeValue v => Text -> Either String v) -> Either String Watusi
+makeWatusi :: (forall v. ReadAttributeValueByKey v) -> Either String Watusi
 makeWatusi read = Watusi <$> read "foo" <*> read "bar" <*> (read "baz" ??~ Nothing)
 
 readWatusi :: TableItem -> Either String Watusi

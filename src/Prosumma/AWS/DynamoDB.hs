@@ -9,6 +9,7 @@ module Prosumma.AWS.DynamoDB (
   scanTable,
   AttributeValue,
   ReadAttributeValue(..),
+  ReadAttributeValueByKey,
   TableItem,
   TableReadException(..),
   TableScanException(..)
@@ -59,6 +60,8 @@ readErrorKeyNotFound = "The key '%s' was not found."
 readErrorIncorrectType :: String
 readErrorIncorrectType = "The key '%s' was found but was not the correct type."
 
+type ReadAttributeValueByKey v = ReadAttributeValue v => Text -> Either String v
+
 lookupAttributeValue :: (ReadAttributeValue v) => TableItem -> Text -> Either String v
 lookupAttributeValue item key = maybeToEither keyNotFound read >>= maybeToEither incorrectType . readAttributeValue
   where
@@ -85,7 +88,7 @@ lookupAttributeValue item key = maybeToEither keyNotFound read >>= maybeToEither
 --
 -- > readWatusis :: Traversable t => t TableItem -> Either String [Watusi]
 -- > readWatusis = mapM readWatusi
-readTableItem :: ((forall v. ReadAttributeValue v => Text -> Either String v) -> Either String a) -> TableItem -> Either String a
+readTableItem :: ((forall v. ReadAttributeValueByKey v) -> Either String a) -> TableItem -> Either String a
 readTableItem read item = read $ lookupAttributeValue item
 
 -- | Reads a @TableItem@ into another type.
@@ -99,7 +102,7 @@ readTableItem read item = read $ lookupAttributeValue item
 -- >
 -- > readWatusiWithIndex :: Int -> TableItem -> Either String Watusi
 -- > readWatusiWithIndex = readTableItemWithIndex $ \read -> Watusi <$> read "Foo" <*> read "Bar"
-readTableItemWithIndex :: ((forall v. ReadAttributeValue v => Text -> Either String v) -> Either String a) -> Int -> TableItem -> Either String a
+readTableItemWithIndex :: ((forall v. ReadAttributeValueByKey v) -> Either String a) -> Int -> TableItem -> Either String a
 readTableItemWithIndex read index item = case readTableItem read item of
   Right a -> Right a
   Left e -> Left $ printf "At index %d: %s" index e

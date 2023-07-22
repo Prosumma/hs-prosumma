@@ -143,7 +143,7 @@ infixl 1 <<&>>
 om :: Monad m => (a -> b -> m c) -> m a -> b -> m c
 om f a = (a >>=) . flip f
 
--- | Flipped version of @om@ as an operator.
+-- | Flipped version of 'om' as an operator.
 --
 -- This is chiefly useful in situations like this:
 --
