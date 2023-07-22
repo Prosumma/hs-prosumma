@@ -26,6 +26,14 @@ source-repository head
 library
   exposed-modules:
       Prosumma
+      Prosumma.Auth.API
+      Prosumma.Auth.App
+      Prosumma.Auth.Client
+      Prosumma.Auth.Database
+      Prosumma.Auth.Error
+      Prosumma.Auth.Server
+      Prosumma.Auth.Types
+      Prosumma.Auth.Util
       Prosumma.AWS
       Prosumma.AWS.DynamoDB
       Prosumma.Cache
@@ -92,14 +100,6 @@ library
 executable auth
   main-is: Main.hs
   other-modules:
-      Prosumma.Auth.API
-      Prosumma.Auth.App
-      Prosumma.Auth.Client
-      Prosumma.Auth.Database
-      Prosumma.Auth.Error
-      Prosumma.Auth.Server
-      Prosumma.Auth.Types
-      Prosumma.Auth.Util
       Paths_prosumma
   hs-source-dirs:
       apps/auth/server
