@@ -102,7 +102,7 @@ executable auth
   other-modules:
       Paths_prosumma
   hs-source-dirs:
-      apps/auth/server
+      apps/Auth/server
   default-extensions:
       NoImplicitPrelude
       OverloadedStrings
@@ -155,7 +155,7 @@ test-suite auth-test
   other-modules:
       Paths_prosumma
   hs-source-dirs:
-      apps/auth/test
+      apps/Auth/test
   default-extensions:
       NoImplicitPrelude
       OverloadedStrings

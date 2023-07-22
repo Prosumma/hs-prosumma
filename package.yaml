@@ -81,7 +81,7 @@ library:
 executables:
   auth:
     main:                Main.hs
-    source-dirs:         apps/auth/server
+    source-dirs:         apps/Auth/server
     ghc-options:
     - -threaded
     - -rtsopts
@@ -105,7 +105,7 @@ tests:
     - random
   auth-test:
     main:                Spec.hs
-    source-dirs:         apps/auth/test
+    source-dirs:         apps/Auth/test
     ghc-options:
     - -threaded
     - -rtsopts
