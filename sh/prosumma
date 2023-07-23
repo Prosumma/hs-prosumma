@@ -34,9 +34,31 @@ function list {
   done
 }
 
+function encrypt {
+  password="$(cat propass)"
+  for infile in $(find . -iname '*.env'); do
+    outfile="${infile}.encrypted"
+    openssl enc -aes-256-cbc -pbkdf2 -salt -in $infile -out $outfile -pass pass:"$password" 
+  done
+}
+
+function decrypt {
+  password="$(cat propass)"
+  for infile in $(find . -iname '*.env.encrypted'); do
+    outfile="${infile%.encrypted}"
+    openssl enc -d -aes-256-cbc -pbkdf2 -salt -in $infile -out $outfile -pass pass:"$password" 
+  done
+}
+
 case $command in
   :list)
     list
+    ;;
+  :encrypt)
+    encrypt
+    ;;
+  :decrypt)
+    decrypt
     ;;
   :*)
     echo "Unknown command ${bold_color}$command{$reset_color}. Exiting." >&2
