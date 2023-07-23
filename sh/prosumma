@@ -22,7 +22,7 @@ function run {
 
 function list {
   for file in $(find . -iname '*.env'); do
-    description=$(source $file && echo $PRO_DESCRIPTION)
+    description=$(source $file && echo $RUN_DESCRIPTION)
     file=${file%.*}
     file=${file:2}
     file=${file:l}

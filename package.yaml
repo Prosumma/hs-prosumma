@@ -79,7 +79,7 @@ library:
   source-dirs: src
 
 executables:
-  auth:
+  auth-server:
     main:                Main.hs
     source-dirs:         apps/Auth/server
     ghc-options:
