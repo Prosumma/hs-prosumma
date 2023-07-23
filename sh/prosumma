@@ -7,22 +7,36 @@ if [[ $# -eq 0 ]]; then
   echo "Usage"
 fi
 
-command=$@[1]
+command=$1
 
 function run {
   if [[ $# -eq 0 ]]; then
-    echo "Nope!"
+    echo "Nope!" # TODO: Fix this message.
     exit -1
   fi
   environment=$1
   shift
-  test -f $environment.env && source $environment.env
-  ./$environment.run
+  source $environment.env
+  ./$environment.run $@
+}
+
+function list {
+  for file in $(find . -iname '*.env'); do
+    description=$(source $file && echo $PRO_DESCRIPTION)
+    file=${file%.*}
+    file=${file:2}
+    file=${file:l}
+    if [[ -z $description ]]; then
+      echo $file
+    else
+      echo "$file - $description"
+    fi
+  done
 }
 
 case $command in
   :list)
-    echo "list!"
+    list
     ;;
   :*)
     echo "Unknown command ${bold_color}$command{$reset_color}. Exiting." >&2
