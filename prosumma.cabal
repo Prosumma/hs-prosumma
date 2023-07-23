@@ -97,7 +97,7 @@ library
     , warp
   default-language: Haskell2010
 
-executable auth
+executable auth-server
   main-is: Main.hs
   other-modules:
       Paths_prosumma
