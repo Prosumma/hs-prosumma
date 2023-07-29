@@ -33,12 +33,9 @@ class HasMasterKeyArn a where
 data EncryptionException = EncryptionException deriving (Show, Typeable)
 instance Exception EncryptionException
 
-encryptMessageWithMasterKey ::
-  (
-    MonadUnliftIO m,
-    MonadReader env m,
-    HasAWSEnv env
-  ) => Text -> ByteString -> m ByteString
+encryptMessageWithMasterKey
+  :: (MonadUnliftIO m, MonadReader env m, HasAWSEnv env)
+  => Text -> ByteString -> m ByteString
 encryptMessageWithMasterKey masterKeyArn message = do
   resp <- sendAWS $ newGenerateDataKey masterKeyArn &
     (field @"keySpec") ?~ DataKeySpec_AES_256
@@ -48,27 +45,17 @@ encryptMessageWithMasterKey masterKeyArn message = do
     flip catch (throwOnTripleSecException EncryptionException) $ 
       BS.append ciphertextBlob <$> encryptIO password message
 
-encryptMessage ::
-  (
-    MonadUnliftIO m,
-    MonadReader env m,
-    HasMasterKeyArn env,
-    HasAWSEnv env
-  ) =>
-  ByteString -> m ByteString
+encryptMessage
+  :: (MonadUnliftIO m, MonadReader env m, HasMasterKeyArn env, HasAWSEnv env)
+  => ByteString -> m ByteString
 encryptMessage = asks getMasterKeyArn >>=> encryptMessageWithMasterKey 
 
 data DecryptionException = DecryptionException deriving (Show, Typeable)
 instance Exception DecryptionException
 
-decryptMessage ::
-  (
-    MonadUnliftIO m,
-    MonadReader env m,
-    MonadThrow m,
-    HasAWSEnv env
-  ) =>
-  ByteString -> m ByteString
+decryptMessage 
+  :: ( MonadUnliftIO m, MonadReader env m, MonadThrow m, HasAWSEnv env)
+  => ByteString -> m ByteString
 decryptMessage message =
   if BS.length message <= keyLength
     then throwM DecryptionException
