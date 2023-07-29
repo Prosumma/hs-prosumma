@@ -29,7 +29,7 @@ createUser :: CreateUserRequest -> App CreateUserResponse
 createUser user = catchDefault $ encryptUser user >>= writeToDatabase <&> CreateUserResponse
   where
     encryptUser CreateUserRequest{..} = do
-      encryptedPassword <- catchLog (fmapMaybeM (encryptMessage . convertString) curqPassword)
+      encryptedPassword <- catchLog (mapM (encryptMessage . convertString) curqPassword)
       return $ EncryptedUser curqApp (Binary <$> encryptedPassword) curqContact
     writeToDatabase encryptedUser = catchLog (DB.createUser encryptedUser)
 

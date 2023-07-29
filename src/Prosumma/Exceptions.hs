@@ -5,7 +5,6 @@ module Prosumma.Exceptions (
   MatchException,
   catchLog,
   catchMatch,
-  liftEitherM,
   matchAll,
   matchException,
   throwOnHttpStatusError,
@@ -90,11 +89,5 @@ throwOnHttpStatusOutsideRange range mkException response = let httpStatus = resp
 throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m r 
 throwOnHttpStatusError = throwOnHttpStatusOutsideRange [200..299]
 
--- | Maps from `Either` to `MonadThrow`.
-liftEitherM :: (MonadThrow m, Exception e) => Either e a -> m a
-liftEitherM either = case either of
-  Left e -> throwM e
-  Right a -> return a
-
 catchLog :: (MonadUnliftIO m, MonadReader env m, HasLogFunc env) => m a -> m a
-catchLog action = catch action $ \(e :: SomeException) -> logError (displayShow e) >> throwIO e 
+catchLog action = catchAny action $ \e -> logError (displayShow e) >> throwIO e 

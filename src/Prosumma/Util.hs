@@ -2,7 +2,6 @@ module Prosumma.Util (
   also,
   coalesce,
   displayText,
-  fmapMaybeM,
   fromTextReader,
   hush,
   makeProsummaLenses,
@@ -76,13 +75,8 @@ a ??~ b = a ?? pure b
 also :: Monad m => (a -> m b) -> a -> m a
 also f a = f a >> return a
 
--- | Monadic `fmap` for `Maybe`.
-fmapMaybeM :: Monad m => (a -> m b) -> Maybe a -> m (Maybe b)
-fmapMaybeM _ Nothing = return Nothing
-fmapMaybeM f (Just x) = f x <&> Just
-
-whenNothing :: Monad m => Maybe a -> m a -> m a
-whenNothing cond action = maybe action return cond
+whenNothing :: Applicative f => Maybe a -> f a -> f a
+whenNothing cond action = maybe action pure cond
 
 whenNothingM :: Monad m => m (Maybe a) -> m a -> m a
 whenNothingM cond action = cond >>= maybe action return
