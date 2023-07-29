@@ -41,7 +41,7 @@ settings (row:rows) = getRow <> getRows
 -- > }
 -- >
 -- > readPersonSettings :: [HashMap Text AttributeValue] -> Maybe Settings
--- > readPersonSettings items = readSettings items $
+-- > readPersonSettings = readSettings $
 -- >   \lookup -> Settings <$> lookup "name" <*> lookup "age"
 readSettings
   :: ((forall s. ReadAttributeValue s => Text -> Either String s) -> Either String a)

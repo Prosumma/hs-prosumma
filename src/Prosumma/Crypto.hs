@@ -54,7 +54,7 @@ data DecryptionException = DecryptionException deriving (Show, Typeable)
 instance Exception DecryptionException
 
 decryptMessage 
-  :: ( MonadUnliftIO m, MonadReader env m, MonadThrow m, HasAWSEnv env)
+  :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, HasAWSEnv env)
   => ByteString -> m ByteString
 decryptMessage message =
   if BS.length message <= keyLength
