@@ -1,0 +1,43 @@
+\c prosumma
+
+DO $$
+BEGIN
+  PERFORM oid FROM pg_namespace WHERE nspname = 'messaging';
+  IF FOUND THEN
+    DROP SCHEMA messaging CASCADE;
+  END IF;
+END;
+$$;
+
+CREATE SCHEMA messaging;
+
+CREATE TABLE messaging.source_email
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, extid UUID NOT NULL UNIQUE DEFAULT UUID_GENERATE_V4()
+, template TEXT NOT NULL DEFAULT 'any' CHECK(template ~ '^[a-z][a-z0-9-]*$')
+, app public.APP NOT NULL
+, email TEXT NOT NULL
+, UNIQUE(app, email)
+);
+
+CREATE TYPE messaging.push_system AS ENUM('apns', 'firebase');
+
+CREATE TABLE messaging.push_token
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, extid UUID NOT NULL UNIQUE DEFAULT UUID_GENERATE_V4()
+, user_extid UUID NOT NULL
+, token TEXT NOT NULL CHECK(token ~ '^[^\s]+$')
+, "system" messaging.push_system NOT NULL
+, sns_arn TEXT
+, UNIQUE(user_extid, token)
+);
+
+INSERT INTO messaging.source_email(app, email) VALUES('test', 'test@conlangr.com');
+INSERT INTO messaging.source_email(app, email) VALUES('conlangr', 'test@conlangr.com');
+
+GRANT USAGE ON SCHEMA messaging TO messaging;
+GRANT SELECT ON ALL TABLES IN SCHEMA messaging TO messaging;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA messaging TO messaging;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA messaging TO messaging;

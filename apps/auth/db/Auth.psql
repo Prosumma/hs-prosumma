@@ -1,0 +1,250 @@
+\c prosumma
+
+DO $$
+BEGIN
+  PERFORM oid FROM pg_namespace WHERE nspname = 'auth';
+  IF FOUND THEN
+    DROP SCHEMA auth CASCADE;
+  END If;
+END;
+$$;
+
+CREATE SCHEMA auth;
+
+CREATE FUNCTION auth.generate_onetime_code()
+RETURNS TEXT
+LANGUAGE PLPGSQL AS $$
+BEGIN
+  RETURN TO_CHAR(FLOOR(RANDOM() * 999999 + 1), 'fm000000')::TEXT;
+END;
+$$;
+
+CREATE TYPE auth.STATUS AS ENUM('active', 'pending', 'banned', 'deleted');
+
+CREATE FUNCTION auth.status_changed()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+  IF NEW.status != OLD.status THEN
+    NEW.status_at := TIMEZONE('utc', NOW());
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+CREATE TABLE auth.app
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, name public.APP NOT NULL UNIQUE 
+, password BYTEA
+, status auth.STATUS NOT NULL DEFAULT 'active'
+, status_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+, created_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+);
+
+CREATE TRIGGER app_status_changed
+BEFORE UPDATE OF status ON auth.app
+FOR EACH ROW
+EXECUTE FUNCTION auth.status_changed();
+
+CREATE FUNCTION auth.verify_app(_app TEXT)
+RETURNS BIGINT
+STABLE
+LANGUAGE PLPGSQL AS $$
+DECLARE _id BIGINT;
+BEGIN
+  SELECT id INTO _id FROM auth.app WHERE name = _app;                    
+  IF NOT FOUND THEN
+    RAISE SQLSTATE 'NOAPP';
+  END IF;
+  RETURN _id;
+END;
+$$;
+
+CREATE TABLE auth."user"
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, extid UUID NOT NULL UNIQUE DEFAULT UUID_GENERATE_V4()
+, app_id BIGINT NOT NULL REFERENCES auth.app(id)
+, "password" BYTEA
+, status auth.STATUS NOT NULL DEFAULT 'pending'
+, status_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+, created_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+, UNIQUE(id, app_id)
+);
+
+CREATE TRIGGER user_status_changed
+BEFORE UPDATE OF status ON auth."user"
+FOR EACH ROW
+EXECUTE FUNCTION auth.status_changed();
+
+CREATE VIEW auth.available_user AS SELECT * FROM auth."user" WHERE status != 'deleted'; 
+
+CREATE FUNCTION auth.check_contact(_contact CITEXT)
+RETURNS BOOLEAN
+STRICT IMMUTABLE
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+  -- Right now only emails are supported
+  RETURN _contact ILIKE '%@%';
+END;
+$$;
+
+CREATE TABLE auth.contact
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, extid UUID NOT NULL UNIQUE DEFAULT UUID_GENERATE_V4()
+, user_id BIGINT NOT NULL
+, app_id BIGINT NOT NULL 
+, contact CITEXT NOT NULL CHECK(auth.check_contact(contact))
+, status auth.STATUS NOT NULL DEFAULT 'pending'
+, status_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+, created_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW())
+, FOREIGN KEY(user_id, app_id) REFERENCES auth."user"(id, app_id)
+, CHECK(status != 'banned') -- Contacts can't be banned.
+);
+
+CREATE UNIQUE INDEX contact_key ON auth.contact(contact, app_id) WHERE status != 'deleted';
+
+CREATE TRIGGER contact_status_changed
+BEFORE UPDATE OF status ON auth.contact
+FOR EACH ROW
+EXECUTE FUNCTION auth.status_changed();
+
+CREATE VIEW auth.available_contact AS SELECT * FROM auth.contact WHERE status != 'deleted';
+
+CREATE TABLE auth.onetime
+(
+  id BIGSERIAL NOT NULL PRIMARY KEY 
+, contact_id BIGINT NOT NULL REFERENCES auth.contact(id)
+, code CHAR(6) NOT NULL CHECK(CHAR_LENGTH(code) = 6)
+, expires_at TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW() + INTERVAL '10 MINUTES')
+, redeemed_at TIMESTAMP
+);
+
+CREATE FUNCTION auth.verify_status(_status auth.STATUS, _allow_pending BOOLEAN = FALSE)
+RETURNS BOOLEAN
+STRICT IMMUTABLE
+LANGUAGE PLPGSQL AS $$
+BEGIN
+  CASE
+    WHEN _status = 'pending' AND NOT _allow_pending THEN
+      RAISE SQLSTATE 'PNDNG';
+    WHEN _status = 'banned' THEN
+      RAISE SQLSTATE 'BANND';
+    ELSE
+      RETURN TRUE;
+  END CASE;
+END;
+$$;
+
+CREATE FUNCTION auth.create_user(_app TEXT, _password BYTEA, _contact CITEXT)
+RETURNS TEXT
+LANGUAGE PLPGSQL AS $$
+DECLARE _code TEXT;
+BEGIN
+  WITH u AS (
+    INSERT INTO auth."user"(app_id, "password")
+      SELECT auth.verify_app(_app), _password
+      RETURNING id, app_id
+  ), c AS (
+    INSERT INTO auth.contact AS c(user_id, app_id, contact)
+      SELECT id, app_id, _contact FROM u
+      RETURNING c.id
+  ), o AS (
+    INSERT INTO auth.onetime AS o(contact_id, code)
+      SELECT id, auth.generate_onetime_code() FROM c
+      RETURNING o.code
+  )
+  SELECT code INTO _code FROM o;
+  RETURN _code;
+END;
+$$;
+
+CREATE FUNCTION auth.add_contact(_app TEXT, _extid UUID, _contact CITEXT)
+RETURNS TEXT
+STRICT VOLATILE
+LANGUAGE PLPGSQL AS $$
+DECLARE _code TEXT;
+BEGIN
+  WITH u AS (
+    SELECT id, app_id FROM auth.available_user
+      WHERE app_id = auth.verify_app(_app) AND extid = _extid AND auth.verify_status(status)
+  ), c AS (
+    INSERT INTO auth.contact AS c(user_id, app_id, contact)
+      SELECT id, app_id, _contact FROM u
+      RETURNING c.id
+  ), o AS (
+    INSERT INTO auth.onetime AS o(contact_id, code)
+      SELECT id, auth.generate_onetime_code() FROM c
+      RETURNING o.code
+  )
+  SELECT code INTO _code FROM o;
+  IF NOT FOUND THEN
+    RAISE SQLSTATE 'NOUSR';
+  END IF;
+  RETURN _code;
+END;
+$$;
+
+CREATE FUNCTION auth.validate_code(_app TEXT, _contact CITEXT, _code TEXT)
+RETURNS UUID
+STRICT VOLATILE
+LANGUAGE PLPGSQL AS $$
+DECLARE _user_id BIGINT;
+DECLARE _extid UUID;
+DECLARE _status auth.STATUS;
+DECLARE _contact_id BIGINT;
+BEGIN
+  SELECT u.id, u.extid, u.status, c.id
+    INTO _user_id, _extid, _status, _contact_id
+    FROM auth.available_user u INNER JOIN auth.available_contact c
+      ON u.id = c.user_id AND u.app_id = c.app_id
+    WHERE u.app_id = auth.verify_app(_app) AND c.contact = _contact AND auth.verify_status(u.status, TRUE);
+  IF NOT FOUND THEN
+    RAISE SQLSTATE 'NOUSR';
+  END IF;
+  UPDATE auth.onetime
+    SET redeemed_at = TIMEZONE('utc', NOW())
+    WHERE contact_id = _contact_id AND code = _code AND expires_at > TIMEZONE('utc', NOW());
+  IF NOT FOUND THEN
+    RAISE SQLSTATE 'NOCOD';
+  END IF;
+  UPDATE "user"
+    SET status = 'active'
+    WHERE id = _user_id;
+  UPDATE contact
+    SET status = 'active'
+    WHERE id = _contact_id;
+  RETURN _extid;
+END;
+$$;
+
+CREATE FUNCTION auth.get_password(_app TEXT, _contact TEXT)
+RETURNS BYTEA 
+STRICT STABLE
+LANGUAGE PLPGSQL AS $$
+DECLARE _password BYTEA;
+BEGIN
+  SELECT u.password INTO _password
+    FROM auth.available_user u INNER JOIN auth.available_contact c ON u.id = c.user_id AND u.app_id = c.app_id
+    WHERE c.contact = _contact AND u.app_id = auth.verify_app(_app) AND auth.verify_status(u.status, TRUE) AND auth.verify_status(c.status, TRUE);
+  IF NOT FOUND THEN
+    RAISE SQLSTATE 'NOUSR';
+  END IF;
+  IF _password IS NULL THEN
+    RAISE SQLSTATE 'NOPAS';
+  END IF;
+  RETURN _password;
+END;
+$$;
+
+INSERT INTO auth.app(name) VALUES('test');
+
+GRANT USAGE ON SCHEMA auth TO auth;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA auth TO auth;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA auth TO auth;
+GRANT EXECUTE ON ALL ROUTINES IN SCHEMA auth TO auth;
+
