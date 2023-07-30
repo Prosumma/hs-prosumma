@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+
+psql -v ON_ERROR_STOP=1 < apps/Messaging/db/Messaging.psql
