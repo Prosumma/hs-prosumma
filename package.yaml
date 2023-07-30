@@ -26,12 +26,16 @@ dependencies:
 - amazonka-dynamodb >= 2.0 && < 3
 - amazonka-kms >= 2.0 && < 3
 - amazonka-s3 >= 2.0 && < 3
+- amazonka-sesv2 >= 2.0 && < 3
+- amazonka-sns >= 2.0 && < 3
+- amazonka-sso >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
 - base64-bytestring
 - bytestring
 - composition-prelude
 - data-default
+- email-validate
 - exceptions
 - extra
 - formatting
@@ -48,6 +52,7 @@ dependencies:
 - servant-auth-server
 - servant-client
 - servant-server
+- split
 - string-conversions
 - template-haskell
 - text
@@ -67,13 +72,22 @@ ghc-options:
 - -Wmissing-export-lists
 - -Wmissing-home-modules
 - -Wno-name-shadowing
+- -Wno-orphans
 - -Wpartial-fields
 - -Wredundant-constraints
 
 default-extensions:
+- DataKinds
+- FlexibleInstances
+- FunctionalDependencies
+- MultiParamTypeClasses
+- NamedFieldPuns
 - NoImplicitPrelude
 - OverloadedStrings
+- RecordWildCards
 - ScopedTypeVariables
+- TypeApplications
+- TypeSynonymInstances
 
 library:
   source-dirs: src
@@ -118,3 +132,19 @@ tests:
     - HUnit 
     - prosumma
     - servant-client
+  messaging-test:
+    main:                Spec.hs
+    source-dirs:         apps/Messaging/test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hspec
+    - hspec-expectations
+    - http-client
+    - http-types
+    - HUnit 
+    - prosumma
+    - servant-client
+

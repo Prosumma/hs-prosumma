@@ -77,6 +77,32 @@ packages:
     subdir: lib/services/amazonka-s3
     url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
 - completed:
+    name: amazonka-sesv2
+    pantry-tree:
+      sha256: 791399f2f7c022764b94b53cf22dbb61caf41cd3d2e3a1ff6d8b6ceedbb2d123
+      size: 31537
+    sha256: f9a2516e315ea9e8353246f632c722a0cbcd208b19404a8808ddf5ce7d5fc28b
+    size: 34731344
+    subdir: lib/services/amazonka-sesv2
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+    version: '2.0'
+  original:
+    subdir: lib/services/amazonka-sesv2
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+- completed:
+    name: amazonka-sns
+    pantry-tree:
+      sha256: 00f61e85b21ae5af8daceea6cf36205afec078a1e78d7c07156efce5d17423b5
+      size: 11842
+    sha256: f9a2516e315ea9e8353246f632c722a0cbcd208b19404a8808ddf5ce7d5fc28b
+    size: 34731344
+    subdir: lib/services/amazonka-sns
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+    version: '2.0'
+  original:
+    subdir: lib/services/amazonka-sns
+    url: https://github.com/brendanhay/amazonka/archive/3e66cc1b07f2818d0b4fc346310ecdb1c3c27599.tar.gz
+- completed:
     name: amazonka-sso
     pantry-tree:
       sha256: 9f2d5293772b1138eccf9dfa5ceaf4081d6a1e16f14cf8e161831364a0821304
