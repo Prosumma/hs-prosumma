@@ -37,8 +37,13 @@ function list {
 function encrypt {
   password="$(cat propass)"
   for infile in $(find . -iname '*.env'); do
-    outfile="${infile}.encrypted"
-    openssl enc -aes-256-cbc -pbkdf2 -salt -in $infile -out $outfile -pass pass:"$password" 
+    encfile="${infile}.encrypted"
+    checksum=$(shasum -a 256 $infile | cut -d' ' -f1)
+    checkfile="${infile}.checksum"
+    if ! [[ -f $encfile ]] || ! [[ -f $checkfile ]] || [[ $(cat $checkfile) != $checksum ]]; then 
+      openssl enc -aes-256-cbc -pbkdf2 -salt -in $infile -out $encfile -pass pass:"$password" 
+    fi
+    echo $checksum > $checkfile
   done
 }
 
