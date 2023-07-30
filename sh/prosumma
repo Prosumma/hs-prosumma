@@ -50,6 +50,22 @@ function decrypt {
   done
 }
 
+function install {
+  local source=$1;
+  local target=$2;
+  if ! [[ -d $target ]]; then
+    echo "Install target must exist and must be a directory." >&2;
+    exit -1;
+  fi
+  executable=${source:t}
+  target=$target/$executable
+  if [[ -f $target ]] && [[ $(realpath $source) = $(realpath $target)  ]]; then
+    echo "Executable is already in place." >&2;
+    exit -1;
+  fi
+  cp -fv $source $target;
+}
+
 case $command in
   :list)
     list
@@ -59,6 +75,10 @@ case $command in
     ;;
   :decrypt)
     decrypt
+    ;;
+  :install)
+    shift
+    install $0 ${1:-$HOME/bin}
     ;;
   :*)
     echo "Unknown command ${bold_color}$command{$reset_color}. Exiting." >&2
