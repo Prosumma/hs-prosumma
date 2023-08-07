@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Prosumma.Messaging.Server
+import Prosumma.Auth.Server
 import RIO
 
 main :: IO ()
