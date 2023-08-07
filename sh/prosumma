@@ -25,7 +25,7 @@ function list {
     description=$(source $file && echo $RUN_DESCRIPTION)
     file=${file%.*}
     file=${file:2}
-    file=${file:l}
+    file=${file}
     if [[ -z $description ]]; then
       echo $file
     else
