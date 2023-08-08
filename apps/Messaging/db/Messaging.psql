@@ -9,6 +9,8 @@ BEGIN
 END;
 $$;
 
+CALL public.recreate_role('messaging', :ROLPASSWORD);
+
 CREATE SCHEMA messaging;
 
 CREATE TABLE messaging.source_email

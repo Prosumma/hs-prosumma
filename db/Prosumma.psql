@@ -1,8 +1,14 @@
 \c postgres
 
 DROP DATABASE IF EXISTS prosumma;
+CREATE DATABASE prosumma;
 
-CREATE PROCEDURE pg_temp.recreate_role(_rolname name, _password TEXT)
+\c prosumma
+
+CREATE EXTENSION "uuid-ossp";
+CREATE EXTENSION citext;
+
+CREATE PROCEDURE recreate_role(_rolname name, _password TEXT)
 LANGUAGE PLPGSQL AS $$
 BEGIN
   PERFORM FROM pg_catalog.pg_roles WHERE rolname = _rolname;
@@ -12,18 +18,6 @@ BEGIN
   EXECUTE FORMAT('CREATE ROLE %I LOGIN PASSWORD %L', _rolname, _password);
 END;
 $$;
-
--- These passwords are obviously not used in production.
-CALL pg_temp.recreate_role('auth', 'mocode');
-CALL pg_temp.recreate_role('messaging', 'mocode');
-CALL pg_temp.recreate_role('settings', 'mocode');
-
-CREATE DATABASE prosumma;
-
-\c prosumma
-
-CREATE EXTENSION "uuid-ossp";
-CREATE EXTENSION citext;
 
 -- Shared Types
 

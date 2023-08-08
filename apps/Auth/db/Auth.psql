@@ -2,12 +2,14 @@
 
 DO $$
 BEGIN
-  PERFORM oid FROM pg_namespace WHERE nspname = 'auth';
+  PERFORM FROM pg_namespace WHERE nspname = 'auth';
   IF FOUND THEN
     DROP SCHEMA auth CASCADE;
   END If;
 END;
 $$;
+
+CALL public.recreate_role('auth', :ROLPASSWORD);
 
 CREATE SCHEMA auth;
 
