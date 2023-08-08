@@ -4,6 +4,7 @@ module Prosumma.Textual (
   ifMatchTextual,
   parseJSONTextual,
   showTextual,
+  toFieldTextual,
   unsafeFromText,
   Textual(..)
 ) where
@@ -12,6 +13,7 @@ import Data.Aeson.Types
 import Data.String.Conversions
 import Data.Text.Read
 import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.ToField
 import Prosumma.Util
 import RIO hiding (Reader)
 import RIO.Partial
@@ -69,6 +71,10 @@ fromFieldTextual name field mdata = do
     Just value -> return value
     Nothing -> returnError ConversionFailed field $ printf "'%s' is not a valid %s." text name 
 
+-- | Helper to implement `ToField`'s `toField` for a `Textual`.
+toFieldTextual :: Textual a => a -> Action
+toFieldTextual = toField . toText
+
 -- | Helper to parse from JSON to a `Textual` instance.
 --
 -- > instance FromJSON Foo where
@@ -78,6 +84,10 @@ parseJSONTextual name (String text) = case fromText text of
   Just thing -> return thing
   Nothing -> fail $ printf "'%s' is not a valid %s." text name
 parseJSONTextual name invalid = typeMismatch name invalid
+
+-- | Helper to convert a `Textual` to JSON.
+toJSONTextual :: Textual a => a -> Value 
+toJSONTextual = toJSON . toText 
 
 -- | Helper to implement `IsString`'s `fromString` for a `Textual`.
 --
