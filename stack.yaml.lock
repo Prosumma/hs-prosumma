@@ -5,13 +5,6 @@
 
 packages:
 - completed:
-    hackage: text-format-0.3.2.1@sha256:557b3723dfdd28d015846b143cb7b63817110c724b06fce422d9b4272d96bba7,1865
-    pantry-tree:
-      sha256: cc663e9b0e02f528b35f600f9a295c22efae4dcf6b3a0c03783cfd72972982ee
-      size: 1030
-  original:
-    hackage: text-format-0.3.2.1
-- completed:
     name: amazonka
     pantry-tree:
       sha256: 2bbc87a5978cb3ae92e7f08f7b09406faa01e013a9578efcba2a8b2916af7c12
