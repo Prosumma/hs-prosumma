@@ -45,6 +45,7 @@ library
       Prosumma.Messaging.App
       Prosumma.Messaging.Email
       Prosumma.Messaging.Email.Types
+      Prosumma.Messaging.Push
       Prosumma.Messaging.Push.Types
       Prosumma.Messaging.Server
       Prosumma.PG

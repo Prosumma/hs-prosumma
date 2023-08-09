@@ -5,6 +5,7 @@ module Prosumma.Textual (
   parseJSONTextual,
   showTextual,
   toFieldTextual,
+  toJSONTextual,
   unsafeFromText,
   Textual(..)
 ) where
