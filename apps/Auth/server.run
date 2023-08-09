@@ -1,3 +1,0 @@
-#!/usr/bin/env zsh
-
-stack run auth-server

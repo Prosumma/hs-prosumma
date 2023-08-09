@@ -93,18 +93,9 @@ library:
   source-dirs: src
 
 executables:
-  auth-server:
+  prosumma-exe:
     main:                Main.hs
-    source-dirs:         apps/Auth/server
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - prosumma
-  messaging-server:
-    main:                Main.hs
-    source-dirs:         apps/Messaging/server
+    source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
@@ -126,34 +117,4 @@ tests:
     - hspec-expectations
     - prosumma
     - random
-  auth-test:
-    main:                Spec.hs
-    source-dirs:         apps/Auth/test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - hspec
-    - hspec-expectations
-    - http-client
-    - http-types
-    - HUnit 
-    - prosumma
-    - servant-client
-  messaging-test:
-    main:                Spec.hs
-    source-dirs:         apps/Messaging/test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - hspec
-    - hspec-expectations
-    - http-client
-    - http-types
-    - HUnit 
-    - prosumma
-    - servant-client
 

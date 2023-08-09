@@ -1,3 +1,0 @@
-#!/usr/bin/env zsh
-
-stack test prosumma:auth-test
