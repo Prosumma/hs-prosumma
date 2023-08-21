@@ -23,7 +23,7 @@ instance HasLogFunc Logger where
   logFuncL = lens loggerLogFunc (\context loggerLogFunc -> context{loggerLogFunc})
 
 initDefaultLogging :: IO LogOptions
-initDefaultLogging = logOptionsHandle stderr True <&> setLogUseTime True . setLogUseLoc True 
+initDefaultLogging = logOptionsHandle stderr True
 
 withInitLogging :: HasLogFunc s => IO LogOptions -> RIO s a -> RIO s a
 withInitLogging initLogging app = liftIO initLogging >>= withLogging app
