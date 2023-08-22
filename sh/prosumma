@@ -62,13 +62,35 @@ function install {
     echo "Install target must exist and must be a directory." >&2;
     exit -1;
   fi
-  executable=${source:t}
+  local executable=${source:t}
   target=$target/$executable
   if [[ -f $target ]] && [[ $(realpath $source) = $(realpath $target)  ]]; then
     echo "Executable is already in place." >&2;
     exit -1;
   fi
   cp -fv $source $target;
+}
+
+function update {
+  local repo=prosumma/hs-prosumma
+  local tag=$1
+  local yamlfile=${2:-stack.yaml}
+  if [[ -z $tag ]]; then
+    echo "No version tag specified. Quitting." >&2
+    exit 1
+  fi
+  if ! [[ -f $yamlfile ]]; then
+    echo "No stack.yaml file to edit. Quitting." >&2
+    exit 1
+  fi
+  repo=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .git" $yamlfile) 
+  if [[ -z $repo ]]; then
+    echo "Repository $repo not found in $yamlfile." >&2
+    exit 1
+  fi
+  local commit=$(git ls-remote $repo $tag | cut -f1)
+  yq e --inplace "(.extra-deps[] | select(.git == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
+  echo "Updated $repo ($tag) to $commit."
 }
 
 case $command in
@@ -80,6 +102,10 @@ case $command in
     ;;
   :decrypt)
     decrypt
+    ;;
+  :update)
+    shift
+    update "$@"
     ;;
   :install)
     shift
