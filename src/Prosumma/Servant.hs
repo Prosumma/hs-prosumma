@@ -5,10 +5,7 @@ module Prosumma.Servant (
   loggingExceptionHandler,
   mapServerException,
   runApplication,
-  runApplicationWithDefaultLogging,
-  runApplicationWithLogFunc,
   runApplicationWithLogging,
-  runApplicationWithoutLogging,
   ServerExceptionHandler,
   ServerHandler,
   ServerResponse,
@@ -17,7 +14,6 @@ module Prosumma.Servant (
 
 import Control.Monad.Error.Class
 import Data.Kind
-import Prosumma.Logging
 import RIO hiding (Handler)
 import Servant
 
@@ -50,22 +46,7 @@ runApplication
   => (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler transform proxy api state = serve proxy $ hoistServer proxy (mapApp handler transform state) api
 
-runApplicationWithLogFunc
-  :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
-  => LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
-runApplicationWithLogFunc logFunc proxy api state = runApplication loggingExceptionHandler id proxy api $ state & logFuncL .~ logFunc
-
 runApplicationWithLogging
   :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
-  => IO LogOptions -> Proxy api -> ServerT api (RIO s) -> s -> Application 
-runApplicationWithLogging initLogging = runApplication loggingExceptionHandler (withInitLogging initLogging)
-
-runApplicationWithDefaultLogging
-  :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
-  => Proxy api -> ServerT api (RIO s) -> s -> Application
-runApplicationWithDefaultLogging = runApplicationWithLogging initDefaultLogging 
-
-runApplicationWithoutLogging
-  :: forall (api :: Type) s. HasServer api '[]
-  => Proxy api -> ServerT api (RIO s) -> s -> Application
-runApplicationWithoutLogging = runApplication defaultExceptionHandler id
+  => LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithLogging logFunc proxy api state = runApplication loggingExceptionHandler id proxy api $ state & logFuncL .~ logFunc

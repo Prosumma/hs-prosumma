@@ -25,7 +25,6 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.Pool
-import Prosumma.Logging
 import Prosumma.Textual
 import Prosumma.Util
 import RIO hiding (withLogFunc)
@@ -107,13 +106,13 @@ formatSQLQuery conn (ParameterizedSQLQuery sql q) = toText <$> formatQuery conn 
 run
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m)
   => SQLQuery -> (Connection -> IO a) -> m a
-run query action = 
-  withLogFunc $ \logFunc -> 
-    withConnection $ \conn ->
-      runRIO logFunc $
-        liftIO (formatSQLQuery conn query) >>=
-        logDebugS logSource . display >>
-        liftIO (action conn)
+run query action = do
+  logFunc <- asks (^.logFuncL)
+  withConnection $ \conn ->
+    runRIO logFunc $
+      liftIO (formatSQLQuery conn query) >>=
+      logDebugS logSource . display >>
+      liftIO (action conn)
 
 -- | Runs — but first, logs — an unparameterized SQL query. 
 runSQLQuery

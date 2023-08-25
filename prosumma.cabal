@@ -32,7 +32,6 @@ library
       Prosumma.Crypto
       Prosumma.Environment
       Prosumma.Exceptions
-      Prosumma.Logging
       Prosumma.PG
       Prosumma.Servant
       Prosumma.Settings
