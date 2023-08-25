@@ -1,26 +1,14 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Prosumma.Logging (
   initDefaultLogging,
-  newLogger,
   withDefaultLogging,
   withInitLogging,
   withLogFunc,
-  withLogging,
-  Logger(..)
+  withLogging
 ) where
 
 import RIO hiding (withLogFunc)
 
 import qualified RIO
-
-newtype Logger = Logger { loggerLogFunc :: LogFunc }
-
-newLogger :: Logger
-newLogger = Logger mempty
-
-instance HasLogFunc Logger where
-  logFuncL = lens loggerLogFunc (\context loggerLogFunc -> context{loggerLogFunc})
 
 initDefaultLogging :: IO LogOptions
 initDefaultLogging = logOptionsHandle stderr True

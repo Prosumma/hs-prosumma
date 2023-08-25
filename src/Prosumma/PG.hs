@@ -110,7 +110,7 @@ run
 run query action = 
   withLogFunc $ \logFunc -> 
     withConnection $ \conn ->
-      runRIO (Logger logFunc) $
+      runRIO logFunc $
         liftIO (formatSQLQuery conn query) >>=
         logDebugS logSource . display >>
         liftIO (action conn)
