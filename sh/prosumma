@@ -75,9 +75,8 @@ function update {
   local repo=prosumma/hs-prosumma
   local tag=$1
   local yamlfile=${2:-stack.yaml}
-  if [[ -z $tag ]]; then
-    echo "No version tag specified. Quitting." >&2
-    exit 1
+  if [[ $tag = -- ]]; then
+    unset tag
   fi
   if ! [[ -f $yamlfile ]]; then
     echo "No stack.yaml file to edit. Quitting." >&2
@@ -88,9 +87,16 @@ function update {
     echo "Repository $repo not found in $yamlfile." >&2
     exit 1
   fi
+  if [[ -z $tag ]]; then
+    tag=$(git $repo | cut -f2 | egrep -o '[0-9]+(\.[0-9]+)+$'| grep -v '^$' | sort -V | tail -n 1)
+    if [[ -z $tag ]]; then
+      echo "No tag specified or found. Quitting." >&2
+      exit 1
+    fi
+  fi
   local commit=$(git ls-remote $repo $tag | cut -f1)
   yq e --inplace "(.extra-deps[] | select(.git == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
-  echo "Updated $repo ($tag) to $commit."
+  echo "Updated $repo to $tag ($commit)."
 }
 
 case $command in
