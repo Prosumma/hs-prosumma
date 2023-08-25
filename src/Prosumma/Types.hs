@@ -2,26 +2,32 @@
 
 module Prosumma.Types (
   AppName,
+  IP,
   Language,
   Localization(..),
   Name,
   Region,
   localizationLanguage,
   localizationRegion,
+  sockAddrToIP,
   pattern Language,
   pattern Name,
   pattern Region
 ) where
 
+import Control.Lens (makeLenses)
 import Data.Aeson
 import Data.Default
-import Control.Lens (makeLenses)
 import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.ToField
+import Net.Types
+import Network.Socket
 import Prosumma.Textual
 import RIO
 import Text.Printf
 import Text.Regex.TDFA
 
+import qualified Net.IP as IP
 import qualified RIO.Text as Text
 
 -- | ISO 639-1 language code
@@ -150,3 +156,18 @@ instance FromField Name where
   fromField = fromFieldTextual "Name" 
 
 type AppName = Name
+
+sockAddrToIP :: SockAddr -> Maybe IP
+sockAddrToIP (SockAddrInet _ hostAddress) = let (t1, t2, t3, t4) = hostAddressToTuple hostAddress in Just $ IP.ipv4 t1 t2 t3 t4
+sockAddrToIP (SockAddrInet6 _ _ hostAddress _) = let (t1, t2, t3, t4, t5, t6, t7, t8) = hostAddress6ToTuple hostAddress in Just $ IP.ipv6 t1 t2 t3 t4 t5 t6 t7 t8
+sockAddrToIP _ = Nothing
+
+instance Textual IP where
+  fromText = IP.decode
+  toText = IP.encode
+
+instance FromField IP where
+  fromField = fromFieldTextual "IP" 
+
+instance ToField IP where
+  toField = toFieldTextual

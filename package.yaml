@@ -34,9 +34,11 @@ dependencies:
 - extra
 - formatting
 - generic-lens
+- ip
 - lens
 - listsafe
 - mtl
+- network
 - postgresql-simple
 - regex-tdfa
 - resource-pool

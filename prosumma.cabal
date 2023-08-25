@@ -72,9 +72,11 @@ library
     , extra
     , formatting
     , generic-lens
+    , ip
     , lens
     , listsafe
     , mtl
+    , network
     , postgresql-simple
     , regex-tdfa
     , resource-pool
@@ -127,9 +129,11 @@ executable prosumma-exe
     , extra
     , formatting
     , generic-lens
+    , ip
     , lens
     , listsafe
     , mtl
+    , network
     , postgresql-simple
     , prosumma
     , regex-tdfa
@@ -194,9 +198,11 @@ test-suite library-test
     , generic-lens
     , hspec
     , hspec-expectations
+    , ip
     , lens
     , listsafe
     , mtl
+    , network
     , postgresql-simple
     , prosumma
     , random
