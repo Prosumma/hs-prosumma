@@ -14,7 +14,7 @@ function run {
     echo "Nope!" # TODO: Fix this message.
     exit -1
   fi
-  environment=$1
+  local environment=$1
   shift
   source $environment.env
   ./$environment.run $@
@@ -22,8 +22,8 @@ function run {
 
 function list {
   for file in $(find . -iname '*.env'); do
-    description=$(source $file && echo $RUN_DESCRIPTION)
-    file=${file%.*}
+    local description=$(source $file && echo $RUN_DESCRIPTION)
+    local file=${file%.*}
     file=${file:2}
     file=${file}
     if [[ -z $description ]]; then
@@ -35,11 +35,12 @@ function list {
 }
 
 function encrypt {
-  password="$(cat propass)"
+  local password="$(cat propass)"
+  local infile
   for infile in $(find . -iname '*.env'); do
-    encfile="${infile}.encrypted"
-    checksum=$(shasum -a 256 $infile | cut -d' ' -f1)
-    checkfile="${infile}.checksum"
+    local encfile="${infile}.encrypted"
+    local checksum=$(shasum -a 256 $infile | cut -d' ' -f1)
+    local checkfile="${infile}.checksum"
     if ! [[ -f $encfile ]] || ! [[ -f $checkfile ]] || [[ $(cat $checkfile) != $checksum ]]; then 
       openssl enc -aes-256-cbc -pbkdf2 -salt -in $infile -out $encfile -pass pass:"$password" 
     fi
@@ -48,9 +49,10 @@ function encrypt {
 }
 
 function decrypt {
-  password="$(cat propass)"
+  local password="$(cat propass)"
+  local infile
   for infile in $(find . -iname '*.env.encrypted'); do
-    outfile="${infile%.encrypted}"
+    local outfile="${infile%.encrypted}"
     openssl enc -d -aes-256-cbc -pbkdf2 -salt -in $infile -out $outfile -pass pass:"$password" 
   done
 }
@@ -88,7 +90,7 @@ function update {
     exit 1
   fi
   if [[ -z $tag ]]; then
-    tag=$(git $repo | cut -f2 | egrep -o '[0-9]+(\.[0-9]+)+$'| grep -v '^$' | sort -V | tail -n 1)
+    tag=$(git ls-remote $repo | cut -f2 | grep '^refs\/tags\/' | egrep -o '[0-9]+(\.[0-9]+)+$'| grep -v '^$' | sort -V | tail -n 1)
     if [[ -z $tag ]]; then
       echo "No tag specified or found. Quitting." >&2
       exit 1
@@ -96,7 +98,7 @@ function update {
   fi
   local commit=$(git ls-remote $repo $tag | cut -f1)
   yq e --inplace "(.extra-deps[] | select(.git == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
-  echo "Updated $repo to $tag ($commit)."
+  echo "Updated $repo to $tag ($commit) in $yamlfile."
 }
 
 case $command in
