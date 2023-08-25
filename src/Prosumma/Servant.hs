@@ -33,7 +33,7 @@ defaultExceptionHandler = return . mapServerException
 loggingExceptionHandler :: HasLogFunc s => SomeException -> RIO s (ServerResponse a)
 loggingExceptionHandler e = do
   logError $ displayShow e
-  return $ mapServerException e
+  defaultExceptionHandler e
 
 runApp :: ServerExceptionHandler s a -> StateTransform s a -> s -> RIO s a -> ServerHandler a
 runApp handler transform state app = liftIO $ runRIO state $ catch (Right <$> transform app) handler
