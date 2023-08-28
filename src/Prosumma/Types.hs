@@ -61,6 +61,9 @@ instance FromJSON Language where
 instance FromField Language where
   fromField = fromFieldTextual "Language" 
 
+instance ToField Language where
+  toField = toFieldTextual
+
 newtype Region = Region' Text deriving (Eq, Ord)
 
 pattern Region :: Text -> Region
