@@ -31,7 +31,7 @@ import qualified Net.IP as IP
 import qualified RIO.Text as Text
 
 -- | ISO 639-1 language code
-newtype Language = Language' Text deriving (Eq, Ord)
+newtype Language = Language' Text deriving (Eq, Ord, Hashable)
 
 pattern Language :: Text -> Language
 pattern Language lang <- Language' lang
@@ -64,7 +64,7 @@ instance FromField Language where
 instance ToField Language where
   toField = toFieldTextual
 
-newtype Region = Region' Text deriving (Eq, Ord)
+newtype Region = Region' Text deriving (Eq, Ord, Hashable)
 
 pattern Region :: Text -> Region
 pattern Region region <- Region' region
@@ -140,7 +140,7 @@ instance ToField Localization where
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
 
-newtype Name = Name' Text deriving (Eq, Ord)
+newtype Name = Name' Text deriving (Eq, Ord, Hashable)
 
 pattern Name :: Text -> Name
 pattern Name name = Name' name

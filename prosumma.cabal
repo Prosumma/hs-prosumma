@@ -48,6 +48,7 @@ library
       DataKinds
       FlexibleInstances
       FunctionalDependencies
+      GeneralizedNewtypeDeriving
       MultiParamTypeClasses
       NamedFieldPuns
       NoImplicitPrelude
@@ -105,6 +106,7 @@ executable prosumma-exe
       DataKinds
       FlexibleInstances
       FunctionalDependencies
+      GeneralizedNewtypeDeriving
       MultiParamTypeClasses
       NamedFieldPuns
       NoImplicitPrelude
@@ -171,6 +173,7 @@ test-suite library-test
       DataKinds
       FlexibleInstances
       FunctionalDependencies
+      GeneralizedNewtypeDeriving
       MultiParamTypeClasses
       NamedFieldPuns
       NoImplicitPrelude

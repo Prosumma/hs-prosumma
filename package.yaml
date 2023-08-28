@@ -73,6 +73,7 @@ default-extensions:
 - DataKinds
 - FlexibleInstances
 - FunctionalDependencies
+- GeneralizedNewtypeDeriving
 - MultiParamTypeClasses
 - NamedFieldPuns
 - NoImplicitPrelude
