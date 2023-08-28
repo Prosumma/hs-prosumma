@@ -88,6 +88,9 @@ instance FromJSON Region where
 instance FromField Region where
   fromField = fromFieldTextual "Region" 
 
+instance ToField Region where
+  toField = toFieldTextual
+
 data Localization = Localization {
   _localizationLanguage :: !Language,
   _localizationRegion :: !(Maybe Region)
@@ -128,6 +131,9 @@ instance FromJSON Localization where
 instance FromField Localization where
   fromField = fromFieldTextual "Localization" 
 
+instance ToField Localization where
+  toField = toFieldTextual
+
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
 
@@ -154,6 +160,9 @@ instance FromJSON Name where
 
 instance FromField Name where
   fromField = fromFieldTextual "Name" 
+
+instance ToField Name where
+  toField = toFieldTextual
 
 type AppName = Name
 
