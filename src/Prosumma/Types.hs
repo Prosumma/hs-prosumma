@@ -24,6 +24,7 @@ import Net.Types
 import Network.Socket
 import Prosumma.Textual
 import RIO
+import Servant
 import Text.Printf
 import Text.Regex.TDFA
 
@@ -64,6 +65,12 @@ instance FromField Language where
 instance ToField Language where
   toField = toFieldTextual
 
+instance ToHttpApiData Language where
+  toUrlPiece = toText
+
+instance FromHttpApiData Language where
+  parseUrlPiece = parseUrlPieceTextual "Language" 
+
 newtype Region = Region' Text deriving (Eq, Ord, Hashable)
 
 pattern Region :: Text -> Region
@@ -93,6 +100,12 @@ instance FromField Region where
 
 instance ToField Region where
   toField = toFieldTextual
+
+instance ToHttpApiData Region where
+  toUrlPiece = toText
+
+instance FromHttpApiData Region where
+  parseUrlPiece = parseUrlPieceTextual "Region"
 
 data Localization = Localization {
   _localizationLanguage :: !Language,
@@ -166,6 +179,12 @@ instance FromField Name where
 
 instance ToField Name where
   toField = toFieldTextual
+
+instance ToHttpApiData Name where
+  toUrlPiece = toText
+
+instance FromHttpApiData Name where
+  parseUrlPiece = parseUrlPieceTextual "Name"
 
 type AppName = Name
 

@@ -3,6 +3,7 @@ module Prosumma.Textual (
   fromStringTextual,
   ifMatchTextual,
   parseJSONTextual,
+  parseUrlPieceTextual,
   showTextual,
   toFieldTextual,
   toJSONTextual,
@@ -11,10 +12,12 @@ module Prosumma.Textual (
 ) where
 
 import Data.Aeson.Types
+import Data.Either.Extra
 import Data.String.Conversions
 import Data.Text.Read
-import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.FromField hiding (format)
 import Database.PostgreSQL.Simple.ToField
+import Formatting
 import Prosumma.Util
 import RIO hiding (Reader)
 import RIO.Partial
@@ -105,3 +108,8 @@ fromStringTextual name string = case fromText (fromString string) of
 -- >   show = showTextual
 showTextual :: Textual a => a -> String
 showTextual = convertString . toText
+
+parseUrlPieceTextual :: Textual a => Text -> Text -> Either Text a
+parseUrlPieceTextual name text = maybeToEither err $ fromText text
+  where
+    err = convertString $ format ("'" % stext % "' is not a valid " % stext % ".") text name
