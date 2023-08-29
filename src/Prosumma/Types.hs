@@ -7,15 +7,14 @@ module Prosumma.Types (
   Localization(..),
   Name,
   Region,
-  localizationLanguage,
-  localizationRegion,
+  language,
+  region, 
   sockAddrToIP,
   pattern Language,
   pattern Name,
   pattern Region
 ) where
 
-import Control.Lens (makeLenses)
 import Data.Aeson
 import Data.Default
 import Database.PostgreSQL.Simple.FromField
@@ -23,6 +22,7 @@ import Database.PostgreSQL.Simple.ToField
 import Net.Types
 import Network.Socket
 import Prosumma.Textual
+import Prosumma.Util
 import RIO
 import Servant
 import Text.Printf
@@ -112,7 +112,7 @@ data Localization = Localization {
   _localizationRegion :: !(Maybe Region)
 } deriving (Eq, Ord)
 
-makeLenses ''Localization
+makeProsummaLenses ''Localization
 
 instance Show Localization where
   show (Localization language (Just region)) = printf "%s-%s" (show language) (show region)
@@ -149,6 +149,12 @@ instance FromField Localization where
 
 instance ToField Localization where
   toField = toFieldTextual
+
+instance ToHttpApiData Localization where
+  toUrlPiece = toText
+
+instance FromHttpApiData Localization where
+  parseUrlPiece = parseUrlPieceTextual "Localization"
 
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
