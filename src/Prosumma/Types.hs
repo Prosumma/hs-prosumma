@@ -7,9 +7,9 @@ module Prosumma.Types (
   Localization(..),
   Name,
   Region,
+  ipFromSockAddr,
   language,
   region, 
-  sockAddrToIP,
   pattern Language,
   pattern Name,
   pattern Region
@@ -32,6 +32,12 @@ import qualified Net.IP as IP
 import qualified RIO.Text as Text
 
 -- | ISO 639-1 language code
+--
+-- The safest way to get an instance of this type is
+-- to use `fromText` from its `Textual` instance.
+--
+-- `Language` also implements `IsString`, but this
+-- should be used with caution.
 newtype Language = Language' Text deriving (Eq, Ord, Hashable)
 
 pattern Language :: Text -> Language
@@ -108,8 +114,8 @@ instance FromHttpApiData Region where
   parseUrlPiece = parseUrlPieceTextual "Region"
 
 data Localization = Localization {
-  _localizationLanguage :: !Language,
-  _localizationRegion :: !(Maybe Region)
+  localizationLanguage :: !Language,
+  localizationRegion :: !(Maybe Region)
 } deriving (Eq, Ord)
 
 makeProsummaLenses ''Localization
@@ -162,7 +168,7 @@ nameRegex = "^[a-z][a-z0-9]*$"
 newtype Name = Name' Text deriving (Eq, Ord, Hashable)
 
 pattern Name :: Text -> Name
-pattern Name name = Name' name
+pattern Name name <- Name' name
 
 instance Show Name where
   show = showTextual
@@ -194,10 +200,10 @@ instance FromHttpApiData Name where
 
 type AppName = Name
 
-sockAddrToIP :: SockAddr -> Maybe IP
-sockAddrToIP (SockAddrInet _ hostAddress) = let (t1, t2, t3, t4) = hostAddressToTuple hostAddress in Just $ IP.ipv4 t1 t2 t3 t4
-sockAddrToIP (SockAddrInet6 _ _ hostAddress _) = let (t1, t2, t3, t4, t5, t6, t7, t8) = hostAddress6ToTuple hostAddress in Just $ IP.ipv6 t1 t2 t3 t4 t5 t6 t7 t8
-sockAddrToIP _ = Nothing
+ipFromSockAddr :: SockAddr -> Maybe IP
+ipFromSockAddr (SockAddrInet _ hostAddress) = let (t1, t2, t3, t4) = hostAddressToTuple hostAddress in Just $ IP.ipv4 t1 t2 t3 t4
+ipFromSockAddr (SockAddrInet6 _ _ hostAddress _) = let (t1, t2, t3, t4, t5, t6, t7, t8) = hostAddress6ToTuple hostAddress in Just $ IP.ipv6 t1 t2 t3 t4 t5 t6 t7 t8
+ipFromSockAddr _ = Nothing
 
 instance Textual IP where
   fromText = IP.decode

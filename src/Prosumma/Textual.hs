@@ -109,6 +109,7 @@ fromStringTextual name string = case fromText (fromString string) of
 showTextual :: Textual a => a -> String
 showTextual = convertString . toText
 
+-- | Implements `parseUrlPiece` in terms of 'Textual'. 
 parseUrlPieceTextual :: Textual a => Text -> Text -> Either Text a
 parseUrlPieceTextual name text = maybeToEither err $ fromText text
   where

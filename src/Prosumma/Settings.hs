@@ -12,7 +12,6 @@ module Prosumma.Settings (
 import Amazonka.DynamoDB
 import Control.Monad.Except
 import Data.Generics.Product
-import Data.Either.Extra
 import Prosumma.AWS
 import Prosumma.AWS.DynamoDB
 import RIO
