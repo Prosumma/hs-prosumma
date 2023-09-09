@@ -34,6 +34,7 @@ dependencies:
 - extra
 - formatting
 - generic-lens
+- hashable
 - ip
 - lens
 - listsafe

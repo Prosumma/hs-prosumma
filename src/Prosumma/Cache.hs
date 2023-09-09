@@ -28,10 +28,12 @@ module Prosumma.Cache (
   setCache,
   sizeCache,
   Cache,
-  Result(..)
+  Result(..),
+  Sentinel(..)
 ) where
 
 import Data.Either.Extra
+import Data.Hashable
 import RIO
 import RIO.Time
 
@@ -74,6 +76,12 @@ instance Eq v => Eq (Result v) where
 
 data NoException = NoException deriving (Show, Typeable)
 instance Exception NoException
+
+-- | A useful key when the `Cache` will only ever contain one element.
+data Sentinel = Sentinel deriving (Eq, Ord, Show)
+
+instance Hashable Sentinel where
+  hashWithSalt salt _ = hashWithSalt salt (2305843009213693951 :: Int)
 
 noException :: SomeException
 noException = toException NoException

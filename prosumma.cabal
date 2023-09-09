@@ -73,6 +73,7 @@ library
     , extra
     , formatting
     , generic-lens
+    , hashable
     , ip
     , lens
     , listsafe
@@ -131,6 +132,7 @@ executable prosumma-exe
     , extra
     , formatting
     , generic-lens
+    , hashable
     , ip
     , lens
     , listsafe
@@ -199,6 +201,7 @@ test-suite library-test
     , extra
     , formatting
     , generic-lens
+    , hashable
     , hspec
     , hspec-expectations
     , ip
