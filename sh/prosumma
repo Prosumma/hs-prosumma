@@ -90,7 +90,7 @@ function update {
     exit 1
   fi
   if [[ -z $tag ]]; then
-    tag=$(git ls-remote $repo | cut -f2 | grep '^refs\/tags\/' | egrep -o '[0-9]+(\.[0-9]+)+$'| grep -v '^$' | sort -V | tail -n 1)
+    tag=$(git ls-remote $repo | cut -f2 | grep '^refs\/tags\/' | egrep -o '[0-9]+(\.[0-9]+)+$' | grep -v '^$' | sort -V | tail -n 1)
     if [[ -z $tag ]]; then
       echo "No tag specified or found. Quitting." >&2
       exit 1
@@ -99,6 +99,26 @@ function update {
   local commit=$(git ls-remote $repo $tag | cut -f1)
   yq e --inplace "(.extra-deps[] | select(.git == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
   echo "Updated $repo to $tag ($commit) in $yamlfile."
+}
+
+function version() {
+  local repo=prosumma/hs-prosumma
+  local yamlfile=${1:-stack.yaml}
+  if ! [[ -f $yamlfile ]]; then
+    echo "No stack.yaml file to examine. Quitting." >&2
+    exit 1
+  fi
+  commit=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .commit" $yamlfile)
+  if [[ -z $commit ]]; then
+    echo "No commit found. Quitting." >&2
+    exit 1
+  fi
+  repo=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .git" $yamlfile)
+  if [[ -z $repo ]]; then
+    echo "Repository URL not found. Quitting." >&2
+    exit 1
+  fi
+  git ls-remote --tags $repo | grep $commit | egrep -o '[0-9]+(\.[0-9]+)+$' 
 }
 
 case $command in
@@ -114,6 +134,10 @@ case $command in
   :update)
     shift
     update "$@"
+    ;;
+  :version)
+    shift
+    version "$@"
     ;;
   :install)
     shift
