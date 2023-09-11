@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric, PatternSynonyms, TemplateHaskell #-}
 
 module Prosumma.Types (
   AppName,
