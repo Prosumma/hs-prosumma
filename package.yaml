@@ -30,6 +30,7 @@ dependencies:
 - base64-bytestring
 - composition-prelude
 - data-default
+- email-validate
 - exceptions
 - extra
 - formatting

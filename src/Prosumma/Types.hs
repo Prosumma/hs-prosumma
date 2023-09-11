@@ -116,7 +116,7 @@ instance FromHttpApiData Region where
 data Localization = Localization {
   localizationLanguage :: !Language,
   localizationRegion :: !(Maybe Region)
-} deriving (Eq, Ord)
+} deriving (Eq, Ord, Generic)
 
 makeProsummaLenses ''Localization
 
@@ -161,6 +161,8 @@ instance ToHttpApiData Localization where
 
 instance FromHttpApiData Localization where
   parseUrlPiece = parseUrlPieceTextual "Localization"
+
+instance Hashable Localization
 
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
@@ -214,3 +216,4 @@ instance FromField IP where
 
 instance ToField IP where
   toField = toFieldTextual
+

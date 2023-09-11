@@ -69,6 +69,7 @@ library
     , base64-bytestring
     , composition-prelude
     , data-default
+    , email-validate
     , exceptions
     , extra
     , formatting
@@ -128,6 +129,7 @@ executable prosumma-exe
     , base64-bytestring
     , composition-prelude
     , data-default
+    , email-validate
     , exceptions
     , extra
     , formatting
@@ -197,6 +199,7 @@ test-suite library-test
     , base64-bytestring
     , composition-prelude
     , data-default
+    , email-validate
     , exceptions
     , extra
     , formatting
