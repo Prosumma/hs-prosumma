@@ -7,10 +7,12 @@ module Prosumma.Exceptions (
   catchMatch,
   matchAll,
   matchException,
+  maybeThrowError,
+  maybeThrowIO,
+  maybeThrowM,
   throwOnHttpStatusError,
   throwOnHttpStatusOutsideRange,
   throwMatch,
-  throwMaybe,
   throwWhen
 ) where
 
@@ -93,6 +95,14 @@ throwOnHttpStatusError = throwOnHttpStatusOutsideRange [200..299]
 catchLog :: (MonadUnliftIO m, MonadReader env m, HasLogFunc env) => m a -> m a
 catchLog action = catchAny action $ \e -> logError (displayShow e) >> throwIO e 
 
-throwMaybe :: (MonadThrow m, Exception e) => e -> Maybe a -> m a
-throwMaybe _ (Just a) = return a
-throwMaybe e Nothing = throwM e
+maybeThrowM :: (Exception e, MonadThrow m) => e -> Maybe a -> m a
+maybeThrowM _ (Just a) = return a
+maybeThrowM e Nothing = throwM e
+
+maybeThrowIO :: (Exception e, MonadIO m) => e -> Maybe a -> m a
+maybeThrowIO _ (Just a) = return a
+maybeThrowIO e Nothing = throwIO e
+
+maybeThrowError :: MonadError e m => e -> Maybe a -> m a
+maybeThrowError _ (Just a) = return a
+maybeThrowError e Nothing = throwError e
