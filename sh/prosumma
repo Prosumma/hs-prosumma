@@ -35,7 +35,7 @@ function list {
 }
 
 function encrypt {
-  local password="$(cat propass)"
+  local password="$(source Profile && echo $PROPASSWORD)"
   local infile
   for infile in $(find . -iname '*.env'); do
     local encfile="${infile}.encrypted"
@@ -49,7 +49,7 @@ function encrypt {
 }
 
 function decrypt {
-  local password="$(cat propass)"
+  local password="$(source Profile && echo $PROPASSWORD)"
   local infile
   for infile in $(find . -iname '*.env.encrypted'); do
     local outfile="${infile%.encrypted}"
