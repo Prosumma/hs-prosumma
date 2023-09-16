@@ -84,11 +84,12 @@ function update {
     echo "No stack.yaml file to edit. Quitting." >&2
     exit 1
   fi
-  repo=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .git" $yamlfile) 
+  repo=$(yq e ".extra-deps[] | select(.github | test(\"(?i)$repo\")) | .github" $yamlfile) 
   if [[ -z $repo ]]; then
     echo "Repository $repo not found in $yamlfile." >&2
     exit 1
   fi
+  repo="https://github.com/$repo"
   if [[ -z $tag ]]; then
     tag=$(git ls-remote $repo | cut -f2 | grep '^refs\/tags\/' | egrep -o '[0-9]+(\.[0-9]+)+$' | grep -v '^$' | sort -V | tail -n 1)
     if [[ -z $tag ]]; then
@@ -97,7 +98,7 @@ function update {
     fi
   fi
   local commit=$(git ls-remote $repo $tag | cut -f1)
-  yq e --inplace "(.extra-deps[] | select(.git == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
+  yq e --inplace "(.extra-deps[] | select(.github == \"$repo\") | .commit) = \"$commit\"" $yamlfile 
   echo "Updated $repo to $tag ($commit) in $yamlfile."
 }
 
@@ -108,16 +109,17 @@ function version() {
     echo "No stack.yaml file to examine. Quitting." >&2
     exit 1
   fi
-  commit=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .commit" $yamlfile)
+  commit=$(yq e ".extra-deps[] | select(.github | test(\"(?i)$repo\")) | .commit" $yamlfile)
   if [[ -z $commit ]]; then
     echo "No commit found. Quitting." >&2
     exit 1
   fi
-  repo=$(yq e ".extra-deps[] | select(.git | test(\"(?i)$repo\")) | .git" $yamlfile)
+  repo=$(yq e ".extra-deps[] | select(.github | test(\"(?i)$repo\")) | .github" $yamlfile)
   if [[ -z $repo ]]; then
     echo "Repository URL not found. Quitting." >&2
     exit 1
   fi
+  repo="https://github.com/$repo"
   git ls-remote --tags $repo | grep $commit | egrep -o '[0-9]+(\.[0-9]+)+$' 
 }
 
