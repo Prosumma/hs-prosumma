@@ -36,11 +36,18 @@ function list {
 
 function encrypt {
   local password="$(source Profile && echo $PROPASSWORD)"
+  local prodomain="$(source Profile && echo $PRODOMAIN)"
+  if [[ -z $prodomain ]]; then
+    echo "Your Profile does not contain a \$PRODOMAIN. Quitting." >&2
+    exit 1
+  fi
   local infile
   for infile in $(find . -iname '*.env'); do
-    local encfile="${infile}.encrypted"
+    local infilename=${infile:t}
+    local infiledir=${infile:h}
+    local encfile="$infiledir/${prodomain}.${infilename}.encrypted"
     local checksum=$(shasum -a 256 $infile | cut -d' ' -f1)
-    local checkfile="${infile}.checksum"
+    local checkfile="$infiledir/${prodomain}.${infilename}.checksum"
     if ! [[ -f $encfile ]] || ! [[ -f $checkfile ]] || [[ $(cat $checkfile) != $checksum ]]; then 
       openssl enc -aes-256-cbc -pbkdf2 -in $infile -out $encfile -k "$password"
     fi
@@ -50,9 +57,14 @@ function encrypt {
 
 function decrypt {
   local password="$(source Profile && echo $PROPASSWORD)"
+  local prodomain="$(source Profile && echo $PRODOMAIN)"
   local infile
-  for infile in $(find . -iname '*.env.encrypted'); do
+  for infile in $(find . -iname ${prodomain}'.*.env.encrypted'); do
     local outfile="${infile%.encrypted}"
+    local outfilename="${outfile:t}"
+    local outdir="${infile:h}"
+    outfilename="${outfilename#$prodomain.}"
+    outfile="$outdir/$outfilename"
     openssl enc -d -aes-256-cbc -pbkdf2 -in $infile -out $outfile -k "$password"
   done
 }
