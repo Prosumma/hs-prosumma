@@ -25,6 +25,7 @@ dependencies:
 - amazonka-core >= 2.0 && < 3
 - amazonka-dynamodb >= 2.0 && < 3
 - amazonka-kms >= 2.0 && < 3
+- amazonka-sns >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
 - base >= 4.7 && < 5
 - base64-bytestring
