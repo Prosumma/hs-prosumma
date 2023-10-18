@@ -36,6 +36,7 @@ library
       Prosumma.PG
       Prosumma.Servant
       Prosumma.Settings
+      Prosumma.Tagged
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Util
