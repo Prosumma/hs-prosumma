@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -91,6 +91,7 @@ library
     , servant-server
     , split
     , string-conversions
+    , tagged
     , template-haskell
     , text
     , triplesec
@@ -153,6 +154,7 @@ executable prosumma-exe
     , servant-server
     , split
     , string-conversions
+    , tagged
     , template-haskell
     , text
     , triplesec
@@ -227,6 +229,7 @@ test-suite library-test
     , servant-server
     , split
     , string-conversions
+    , tagged
     , template-haskell
     , text
     , triplesec

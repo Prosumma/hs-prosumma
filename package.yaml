@@ -52,6 +52,7 @@ dependencies:
 - servant-server
 - split
 - string-conversions
+- tagged
 - template-haskell
 - text
 - triplesec
