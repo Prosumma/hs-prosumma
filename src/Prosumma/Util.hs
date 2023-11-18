@@ -12,7 +12,6 @@ module Prosumma.Util (
   whenNothingM,
   Coalesce(..),
   (??~),
-  (?.=),
   (<->),
   (<#>),
   (<<&>>),
@@ -22,8 +21,6 @@ module Prosumma.Util (
 ) where
 
 import Control.Lens hiding ((??), (.~), (.=))
-import Data.Aeson
-import Data.Aeson.Types
 import Data.Either.Extra
 import Data.Text.Read
 import Data.Foldable
@@ -34,13 +31,6 @@ import RIO.Map (singleton)
 
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
-
-infixr 8 ?.= 
-
-(?.=) :: (Foldable t, ToJSON (t v)) => Key -> t v -> [Pair]
-key ?.= value
-  | null value = []
-  | otherwise = [key .= value]
 
 -- Borrowed from composition-extra, but I don't need the whole library.
 slipr :: (a -> b -> c -> d) -> b -> c -> a -> d

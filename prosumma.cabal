@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Prosumma
+      Prosumma.Aeson
       Prosumma.AWS
       Prosumma.AWS.DynamoDB
       Prosumma.Cache
