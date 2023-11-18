@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, TypeFamilies #-}
+{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, TypeFamilies, TypeOperators #-}
 
 module Prosumma.AWS (
   sendAWS,
@@ -10,6 +10,7 @@ module Prosumma.AWS (
 
 import Amazonka
 import Control.Monad.Reader
+import Data.Type.Equality
 import Data.Generics.Product.Fields
 import Prosumma.Exceptions
 import RIO
