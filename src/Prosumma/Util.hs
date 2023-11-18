@@ -17,6 +17,7 @@ module Prosumma.Util (
   (<<&>>),
   (<<$>>),
   (<=>),
+  (><),
   (>>=>)
 ) where
 
@@ -31,6 +32,11 @@ import RIO.Map (singleton)
 
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
+
+infixr 2 ><
+
+(><) :: Bool -> Bool -> Bool
+a >< b = (a || b) && not (a && b)
 
 -- Borrowed from composition-extra, but I don't need the whole library.
 slipr :: (a -> b -> c -> d) -> b -> c -> a -> d
