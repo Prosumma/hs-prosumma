@@ -6,7 +6,8 @@ module Prosumma.Push (
   badge,
   category,
   customData,
-  message
+  message,
+  newPush
 ) where
 
 import Data.Aeson
@@ -54,6 +55,9 @@ makeProsummaLenses ''Push
 
 instance Default Push where
   def = Push ContentAvailable Nothing Nothing mempty
+
+newPush :: Message -> Push
+newPush message = def { pushMessage = message } 
 
 instance FromJSON Push where
   parseJSON = withObject "Push" $ \o -> 

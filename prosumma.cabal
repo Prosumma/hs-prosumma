@@ -175,6 +175,7 @@ test-suite library-test
       Spec.Cache
       Spec.Crypto
       Spec.Exceptions
+      Spec.Push
       Spec.Settings
       Spec.Textual
       Spec.Util
