@@ -1,4 +1,6 @@
 import RIO
+
+import Spec.Aeson
 import Spec.AWS.DynamoDB
 import Spec.Cache
 import Spec.Crypto
@@ -10,6 +12,7 @@ import Test.Hspec
 
 main :: IO ()
 main = hspec $ do
+  testAeson
   testDynamoDB
   testCache
   testCrypto

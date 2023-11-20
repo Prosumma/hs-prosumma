@@ -35,6 +35,7 @@ library
       Prosumma.Exceptions
       Prosumma.Logging
       Prosumma.PG
+      Prosumma.Push
       Prosumma.Servant
       Prosumma.Settings
       Prosumma.Tagged
@@ -97,6 +98,7 @@ library
     , text
     , triplesec
     , uuid
+    , vector
     , wai
     , warp
   default-language: Haskell2010
@@ -159,6 +161,7 @@ executable prosumma-exe
     , text
     , triplesec
     , uuid
+    , vector
     , wai
     , warp
   default-language: Haskell2010
@@ -167,6 +170,7 @@ test-suite library-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Spec.Aeson
       Spec.AWS.DynamoDB
       Spec.Cache
       Spec.Crypto
@@ -233,6 +237,7 @@ test-suite library-test
     , text
     , triplesec
     , uuid
+    , vector
     , wai
     , warp
   default-language: Haskell2010
