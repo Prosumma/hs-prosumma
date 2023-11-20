@@ -4,6 +4,7 @@ module Prosumma.Aeson (
  JSONStripPredicate,
  ParentContext(..),
  StripIn(..),
+ ToParentContext(..),
  inArrays,
  inObjects,
  ofAll,
@@ -15,6 +16,7 @@ module Prosumma.Aeson (
  ofNullStrings,
  orJSONStripPredicate,
  stripJSON,
+ (<\),
  (<||>)
 ) where
 
@@ -28,6 +30,31 @@ import qualified RIO.Text as T
 
 data ParentContext = NoParent | ObjectParent Key ParentContext | ArrayParent Int ParentContext deriving (Eq, Show)
 
+instance Semigroup ParentContext where
+  NoParent <> b = b
+  (ObjectParent key rest) <> b = ObjectParent key (rest <> b)
+  (ArrayParent index rest) <> b = ArrayParent index (rest <> b)
+
+instance Monoid ParentContext where
+  mempty = NoParent
+
+class ToParentContext a where
+  toParentContext :: a -> ParentContext
+
+instance ToParentContext ParentContext where
+  toParentContext = id
+
+instance ToParentContext Key where
+  toParentContext key = ObjectParent key NoParent
+
+instance ToParentContext Int where
+  toParentContext index = ArrayParent index NoParent
+
+infixr 1 <\
+
+(<\) :: (ToParentContext a, ToParentContext b) => a -> b -> ParentContext
+a <\ b = toParentContext a <> toParentContext b
+
 type JSONStripPredicate = ParentContext -> Value -> Bool
 
 foldMapWithIndex :: Monoid m => (Int -> a -> m) -> Vector a -> m
@@ -40,7 +67,7 @@ stripJSON' parent shouldStrip (Object o) = Object $ KM.foldMapWithKey strip o
   where
     -- As a reminder, stripping is the process of removing a node from its parent.
     strip k c = let
-        context = ObjectParent k parent
+        context = k <\ parent 
         -- Strip the children of this node, if possible
         stripped = stripJSON' context shouldStrip c
       -- Once the children have been stripped, we check to see whether
@@ -50,7 +77,7 @@ stripJSON' parent shouldStrip (Array a) = Array $ foldMapWithIndex strip a
   where
     -- As a reminder, stripping is the process of removing a node from its parent.
     strip i c = let
-        context = ArrayParent i parent
+        context = i <\ parent 
         stripped = stripJSON' context shouldStrip c
       -- Once the children have been stripped, we check to see whether
       -- this node can be stripped from its parent
