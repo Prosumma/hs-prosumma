@@ -4,14 +4,16 @@ module Prosumma.Aeson (
  JSONStripPredicate,
  ParentContext(..),
  StripIn(..),
- stripAll,
- stripNullArray,
- stripEmptyString,
- stripFalse,
+ ofAll,
+ stripInArrays,
+ stripInObjects,
+ ofNullArrays,
+ ofEmptyStrings,
+ ofFalse,
  stripJSON,
- stripNull,
- stripNullObject,
- stripNullString,
+ ofNulls,
+ ofNullObjects,
+ ofNullStrings,
  (?.=)
 ) where
 
@@ -35,7 +37,7 @@ infixr 8 ?.=
 -- If `badge` is `Maybe Int`, we'll get a `[Pair]` if it's something
 -- and `[]` if it's nothing.
 --
--- Prefer @stripNullFields@ to this. 
+-- Prefer @ofNullsFields@ to this. 
 (?.=) :: (Foldable t, ToJSON (t v)) => Key -> t v -> [Pair]
 key ?.= value
   | null value = []
@@ -78,12 +80,12 @@ stripJSON' _ _ j = j
 -- we want to strip null fields from objects. This can be
 -- achieved quite easily:
 --
--- > stripJSON (stripNull InObjects)
+-- > stripJSON (ofNulls InObjects)
 --
 -- But if we want to get more aggressive, we can strip
 -- empty objects, empty arrays, empty strings, `false`, etc.
 --
--- > stripJSON (stripAll InBoth)
+-- > stripJSON (ofAll InBoth)
 --
 -- The above will take the JSON 
 -- `{"foo": null, "bar": [null, {}]}`
@@ -96,7 +98,7 @@ stripJSON' _ _ j = j
 --
 -- > keepData :: JSONStripPredicate
 -- > keepData (ObjectParent "data" _) _ = False
--- > keepData parent value = stripAll InObjects parent value
+-- > keepData parent value = ofAll InObjects parent value
 --
 -- This can then be passed when stripping:
 --
@@ -147,26 +149,26 @@ strip shouldStrip (stripInArrays -> True) (ArrayParent _ _) value = shouldStrip 
 strip shouldStrip (stripInObjects -> True) (ObjectParent _ _) value = shouldStrip value
 strip _ _ _ _ = False
 
-stripNull :: StripIn -> JSONStripPredicate
-stripNull = strip whenNull
+ofNulls :: StripIn -> JSONStripPredicate
+ofNulls = strip whenNull
 
-stripNullString :: StripIn -> JSONStripPredicate
-stripNullString = strip whenNullString
+ofNullStrings :: StripIn -> JSONStripPredicate
+ofNullStrings = strip whenNullString
 
-stripEmptyString :: StripIn -> JSONStripPredicate
-stripEmptyString = strip whenEmptyString
+ofEmptyStrings :: StripIn -> JSONStripPredicate
+ofEmptyStrings = strip whenEmptyString
 
-stripNullArray :: StripIn -> JSONStripPredicate
-stripNullArray = strip whenNullArray
+ofNullArrays :: StripIn -> JSONStripPredicate
+ofNullArrays = strip whenNullArray
 
-stripNullObject :: StripIn -> JSONStripPredicate
-stripNullObject = strip whenNullObject
+ofNullObjects :: StripIn -> JSONStripPredicate
+ofNullObjects = strip whenNullObject
 
-stripFalse :: StripIn -> JSONStripPredicate
-stripFalse = strip whenFalse
+ofFalse :: StripIn -> JSONStripPredicate
+ofFalse = strip whenFalse
 
-stripAll :: StripIn -> JSONStripPredicate
-stripAll stripIn = stripNull stripIn <||> stripEmptyString stripIn <||> stripNullArray stripIn <||> stripNullObject stripIn <||> stripFalse stripIn
+ofAll :: StripIn -> JSONStripPredicate
+ofAll stripIn = ofNulls stripIn <||> ofEmptyStrings stripIn <||> ofNullArrays stripIn <||> ofNullObjects stripIn <||> ofFalse stripIn
 
 infixr 1 <||>
 

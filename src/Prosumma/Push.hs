@@ -68,7 +68,7 @@ instance FromJSON Push where
       <*> (fromMaybe mempty <$> o .:? "data")
 
 instance ToJSON Push where
-  toJSON Push{..} = stripJSON (stripAll InBoth) $ object $ messageToPairs pushMessage <> [
+  toJSON Push{..} = stripJSON (ofAll InBoth) $ object $ messageToPairs pushMessage <> [
       "badge" .= pushBadge,
       "category" .= pushCategory,
       "data" .= pushCustomData

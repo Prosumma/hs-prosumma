@@ -17,7 +17,7 @@ instance Default Foo where
   def = Foo Nothing Nothing False mempty
 
 instance ToJSON Foo where
-  toJSON Foo{..} = stripJSON (stripAll InBoth) $ object [
+  toJSON Foo{..} = stripJSON (ofAll InBoth) $ object [
       "bar"  .= fooBar,
       "data" .= fooData,
       "what" .= fooWhat,
