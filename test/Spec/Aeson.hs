@@ -28,7 +28,7 @@ testAeson :: Spec
 testAeson = do
   describe "stripJSON stripAll" $ do
     it "strips empty nodes (null, [], {}, empty strings, and false) recursively from objects and arrays" $ do
-      let nested = def { fooBar = Just "  " }
+      let nested = def { fooBar = Just "  ", fooWhat = False }
       let foo = Foo (Just "Bar") (Just def) True [nested, def] 
       let j = encode foo
       j `shouldBe` "{\"bar\":\"Bar\",\"what\":true}"

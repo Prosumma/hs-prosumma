@@ -4,44 +4,27 @@ module Prosumma.Aeson (
  JSONStripPredicate,
  ParentContext(..),
  StripIn(..),
+ inArrays,
+ inObjects,
  ofAll,
- stripInArrays,
- stripInObjects,
- ofNullArrays,
  ofEmptyStrings,
  ofFalse,
- stripJSON,
- ofNulls,
+ ofNullArrays,
  ofNullObjects,
+ ofNulls,
  ofNullStrings,
- (?.=)
+ orJSONStripPredicate,
+ stripJSON,
+ (<||>)
 ) where
 
 import Data.Aeson
-import Data.Aeson.Types
 import Data.Char
 import RIO
 
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as V
 import qualified RIO.Text as T
-
-infixr 8 ?.=
-
--- | If the second parameter is null, returns an empty list.
---
--- This is chiefly useful for `Maybe`. For example:
---
--- > "badge" ?.= badge
---
--- If `badge` is `Maybe Int`, we'll get a `[Pair]` if it's something
--- and `[]` if it's nothing.
---
--- Prefer @ofNullsFields@ to this. 
-(?.=) :: (Foldable t, ToJSON (t v)) => Key -> t v -> [Pair]
-key ?.= value
-  | null value = []
-  | otherwise = [key .= value]
 
 data ParentContext = NoParent | ObjectParent Key ParentContext | ArrayParent Int ParentContext deriving (Eq, Show)
 
@@ -55,21 +38,22 @@ foldMapWithIndex f v = V.foldr fold mempty $ V.imap (,) v
 stripJSON' :: ParentContext -> JSONStripPredicate -> Value -> Value
 stripJSON' parent shouldStrip (Object o) = Object $ KM.foldMapWithKey strip o
   where
+    -- As a reminder, stripping is the process of removing a node from its parent.
     strip k c = let
         context = ObjectParent k parent
         -- Strip the children of this node, if possible
         stripped = stripJSON' context shouldStrip c
-        -- Once the children have been stripped, we check to see whether
-        -- this node can be stripped from its parent
+      -- Once the children have been stripped, we check to see whether
+      -- this node can be stripped from its parent
       in if shouldStrip context stripped then mempty else KM.singleton k stripped
 stripJSON' parent shouldStrip (Array a) = Array $ foldMapWithIndex strip a
   where
+    -- As a reminder, stripping is the process of removing a node from its parent.
     strip i c = let
         context = ArrayParent i parent
-        -- Strip the children of this node, if possible
         stripped = stripJSON' context shouldStrip c
-        -- Once the children have been stripped, we check to see whether
-        -- this node can be stripped from its parent
+      -- Once the children have been stripped, we check to see whether
+      -- this node can be stripped from its parent
       in if shouldStrip context stripped then mempty else V.singleton stripped
 stripJSON' _ _ j = j
 
@@ -134,19 +118,19 @@ whenFalse _ = False
 
 data StripIn = InArrays | InObjects | InBoth deriving (Eq, Show)
 
-stripInArrays :: StripIn -> Bool
-stripInArrays InArrays = True
-stripInArrays InBoth = True
-stripInArrays InObjects = False
+inArrays :: StripIn -> Bool
+inArrays InArrays = True
+inArrays InBoth = True
+inArrays InObjects = False
 
-stripInObjects :: StripIn -> Bool
-stripInObjects InObjects = True
-stripInObjects InBoth = True
-stripInObjects InArrays = False
+inObjects :: StripIn -> Bool
+inObjects InObjects = True
+inObjects InBoth = True
+inObjects InArrays = False
 
 strip :: ShouldStrip -> StripIn -> JSONStripPredicate
-strip shouldStrip (stripInArrays -> True) (ArrayParent _ _) value = shouldStrip value
-strip shouldStrip (stripInObjects -> True) (ObjectParent _ _) value = shouldStrip value
+strip shouldStrip (inArrays -> True) (ArrayParent _ _) value = shouldStrip value
+strip shouldStrip (inObjects -> True) (ObjectParent _ _) value = shouldStrip value
 strip _ _ _ _ = False
 
 ofNulls :: StripIn -> JSONStripPredicate
