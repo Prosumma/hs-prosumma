@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, KindSignatures, PatternSynonyms, TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, KindSignatures, PatternSynonyms, TemplateHaskell, NoGeneralisedNewtypeDeriving #-}
 
 module Prosumma.Types (
   AppName,
@@ -37,7 +37,7 @@ import qualified Data.String.Conversions.Monomorphic as S
 import qualified Net.IP as IP
 import qualified RIO.Text as Text
 
-data CRUDOperation = Create | Read | Update | Delete deriving (Show)
+data CRUDOperation = Create | Read | Update | Delete deriving (Eq, Ord, Enum, Show, Read, Generic, Hashable, Data, Typeable, NFData)
 
 -- | ISO 639-1 language code
 --
@@ -46,7 +46,7 @@ data CRUDOperation = Create | Read | Update | Delete deriving (Show)
 --
 -- `Language` also implements `IsString`, but this
 -- should be used with caution.
-newtype Language = Language' Text deriving (Eq, Ord, Hashable)
+newtype Language = Language' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
 pattern Language :: Text -> Language
 pattern Language lang <- Language' lang
@@ -85,7 +85,7 @@ instance ToHttpApiData Language where
 instance FromHttpApiData Language where
   parseUrlPiece = parseUrlPieceTextual "Language" 
 
-newtype Region = Region' Text deriving (Eq, Ord, Hashable)
+newtype Region = Region' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
 pattern Region :: Text -> Region
 pattern Region region <- Region' region
@@ -124,7 +124,7 @@ instance FromHttpApiData Region where
 data Localization = Localization {
   localizationLanguage :: !Language,
   localizationRegion :: !(Maybe Region)
-} deriving (Eq, Ord, Generic)
+} deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
 makeProsummaLenses ''Localization
 
@@ -170,12 +170,10 @@ instance ToHttpApiData Localization where
 instance FromHttpApiData Localization where
   parseUrlPiece = parseUrlPieceTextual "Localization"
 
-instance Hashable Localization
-
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
 
-newtype Name = Name' Text deriving (Eq, Ord, Hashable)
+newtype Name = Name' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
 pattern Name :: Text -> Name
 pattern Name name <- Name' name
@@ -225,7 +223,7 @@ instance FromField IP where
 instance ToField IP where
   toField = toFieldTextual
 
-newtype IANATimeZone = IANATimeZone' Text deriving (Eq, Ord, Show)
+newtype IANATimeZone = IANATimeZone' Text deriving (Eq, Ord, Show, Generic, Hashable, Data, Typeable, NFData)
 
 pattern IANATimeZone :: Text -> IANATimeZone
 pattern IANATimeZone tz <- IANATimeZone' tz
@@ -254,7 +252,7 @@ instance FromField IANATimeZone where
 instance ToField IANATimeZone where
   toField = toFieldTextual
 
-data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show)
+data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
 instance Textual OS where
   fromText = readMaybe . ("OS" ++) . S.toString
@@ -275,7 +273,7 @@ instance ToJSON OS where
 instance FromJSON OS where
   parseJSON = parseJSONTextual "OS"
 
-data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show)
+data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
 instance IsString PushSystem where
   fromString = fromStringTextual "PushSystem"
