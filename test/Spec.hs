@@ -8,6 +8,7 @@ import Spec.Exceptions
 import Spec.Push
 import Spec.Settings
 import Spec.Textual
+import Spec.Types
 import Spec.Util
 import Test.Hspec
 
@@ -20,5 +21,6 @@ main = hspec $ do
   testExceptions
   testPush
   testTextual
+  testTypes
   testUtil
   testSettings

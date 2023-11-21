@@ -14,7 +14,6 @@ module Prosumma.PG (
   value1,
   ConnectionPool,
   ConnectionRunner(..),
-  CRUDOperation(..),
   PG(..),
   RPG,
 ) where
@@ -31,8 +30,6 @@ import Prosumma.Util
 import RIO hiding (withLogFunc)
 
 import qualified Database.PostgreSQL.Simple as PG
-
-data CRUDOperation = Create | Read | Update | Delete deriving (Show)
 
 type ConnectionPool = Pool Connection
 

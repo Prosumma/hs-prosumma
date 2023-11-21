@@ -178,6 +178,7 @@ test-suite library-test
       Spec.Push
       Spec.Settings
       Spec.Textual
+      Spec.Types
       Spec.Util
       Paths_prosumma
   hs-source-dirs:

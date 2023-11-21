@@ -1,15 +1,20 @@
-{-# LANGUAGE DeriveGeneric, PatternSynonyms, TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric, KindSignatures, PatternSynonyms, TemplateHaskell #-}
 
 module Prosumma.Types (
   AppName,
+  CRUDOperation(..),
+  IANATimeZone,
   IP,
   Language,
   Localization(..),
   Name,
+  OS(..),
+  PushSystem(..),
   Region,
   ipFromSockAddr,
   language,
   region, 
+  pattern IANATimeZone,
   pattern Language,
   pattern Name,
   pattern Region
@@ -28,8 +33,11 @@ import Servant
 import Text.Printf
 import Text.Regex.TDFA
 
+import qualified Data.String.Conversions.Monomorphic as S
 import qualified Net.IP as IP
 import qualified RIO.Text as Text
+
+data CRUDOperation = Create | Read | Update | Delete deriving (Show)
 
 -- | ISO 639-1 language code
 --
@@ -217,3 +225,73 @@ instance FromField IP where
 instance ToField IP where
   toField = toFieldTextual
 
+newtype IANATimeZone = IANATimeZone' Text deriving (Eq, Ord, Show)
+
+pattern IANATimeZone :: Text -> IANATimeZone
+pattern IANATimeZone tz <- IANATimeZone' tz
+
+ianaTimeZoneRegex :: Text
+ianaTimeZoneRegex = "^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$"
+
+instance Textual IANATimeZone where
+  toText (IANATimeZone' text) = text
+  fromText text = if text =~ ianaTimeZoneRegex
+    then return $ IANATimeZone' text
+    else Nothing
+
+instance IsString IANATimeZone where
+  fromString = fromStringTextual "IANATimeZone"
+
+instance FromJSON IANATimeZone where
+  parseJSON = parseJSONTextual "IANATimeZone"
+
+instance ToJSON IANATimeZone where
+  toJSON = toJSONTextual
+
+instance FromField IANATimeZone where
+  fromField = fromFieldTextual "IANATimeZone"
+
+instance ToField IANATimeZone where
+  toField = toFieldTextual
+
+data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show)
+
+instance Textual OS where
+  fromText = readMaybe . ("OS" ++) . S.toString
+  toText = S.toStrictText . drop 2 . show
+
+instance IsString OS where
+  fromString = fromStringTextual "OS"
+
+instance FromField OS where
+  fromField = fromFieldTextual "OS"
+
+instance ToField OS where
+  toField = toFieldTextual
+
+instance ToJSON OS where
+  toJSON = toJSONTextual
+
+instance FromJSON OS where
+  parseJSON = parseJSONTextual "OS"
+
+data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show)
+
+instance IsString PushSystem where
+  fromString = fromStringTextual "PushSystem"
+
+instance Textual PushSystem where
+  fromText = readMaybe . S.toString 
+  toText = S.toStrictText . show
+
+instance FromField PushSystem where
+  fromField = fromFieldTextual "PushSystem"
+
+instance ToField PushSystem where
+  toField = toFieldTextual
+
+instance ToJSON PushSystem where
+  toJSON = toJSONTextual
+
+instance FromJSON PushSystem where
+  parseJSON = parseJSONTextual "PushSystem"
