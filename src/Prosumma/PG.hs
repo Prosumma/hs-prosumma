@@ -14,6 +14,7 @@ module Prosumma.PG (
   value1,
   ConnectionPool,
   ConnectionRunner(..),
+  CRUDOperation(..),
   PG(..),
   RPG,
 ) where
@@ -30,6 +31,8 @@ import Prosumma.Util
 import RIO hiding (withLogFunc)
 
 import qualified Database.PostgreSQL.Simple as PG
+
+data CRUDOperation = Create | Read | Update | Delete deriving (Show)
 
 type ConnectionPool = Pool Connection
 
@@ -165,3 +168,4 @@ value1
   :: (MonadReader env m, ConnectionRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v)
   => Query -> q -> m v
 value1 = (fromOnly <$>) .* query1 
+
