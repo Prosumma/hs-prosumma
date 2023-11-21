@@ -7,6 +7,7 @@ module Prosumma.Push (
   category,
   customData,
   message,
+  newAlert,
   newPush
 ) where
 
@@ -58,6 +59,9 @@ instance Default Push where
 
 newPush :: Message -> Push
 newPush message = def { pushMessage = message } 
+
+newAlert :: Text -> Push
+newAlert = newPush . Message 
 
 instance FromJSON Push where
   parseJSON = withObject "Push" $ \o -> 
