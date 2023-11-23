@@ -5,14 +5,17 @@ module Prosumma.Exceptions (
   MatchException,
   catchLog,
   catchMatch,
+  eitherThrowError,
+  eitherThrowIO,
+  eitherThrowM,
   matchAll,
   matchException,
   maybeThrowError,
   maybeThrowIO,
   maybeThrowM,
+  throwMatch,
   throwOnHttpStatusError,
   throwOnHttpStatusOutsideRange,
-  throwMatch,
   throwWhen
 ) where
 
@@ -106,3 +109,18 @@ maybeThrowIO e Nothing = throwIO e
 maybeThrowError :: MonadError e m => e -> Maybe a -> m a
 maybeThrowError _ (Just a) = return a
 maybeThrowError e Nothing = throwError e
+
+eitherThrowM :: (Exception e, MonadThrow m) => (l -> e) -> Either l r -> m r
+eitherThrowM make ethr = case ethr of
+  Right r -> return r
+  Left l -> throwM (make l)
+
+eitherThrowIO :: (Exception e, MonadIO m) => (l -> e) -> Either l r -> m r
+eitherThrowIO make ethr = case ethr of
+  Right r -> return r
+  Left l -> throwIO $ make l
+
+eitherThrowError :: MonadError e m => (l -> e) -> Either l r -> m r
+eitherThrowError make ethr = case ethr of
+  Right r -> return r
+  Left l -> throwError (make l)
