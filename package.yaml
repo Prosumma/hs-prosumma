@@ -27,6 +27,7 @@ dependencies:
 - amazonka-kms >= 2.0 && < 3
 - amazonka-sns >= 2.0 && < 3
 - amazonka-sts >= 2.0 && < 3
+- attoparsec
 - base >= 4.7 && < 5
 - base64-bytestring
 - composition-prelude

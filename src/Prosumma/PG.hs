@@ -5,6 +5,7 @@ module Prosumma.PG (
   connectPostgreSQL,
   execute_,
   execute,
+  parseConnectInfo,
   query_,
   query,
   query1_,
@@ -19,17 +20,21 @@ module Prosumma.PG (
 ) where
 
 import Control.Composition
+import Data.Char
 import Data.Functor
-import Database.PostgreSQL.Simple (close, connectPostgreSQL, formatQuery, Connection, FromRow, ToRow)
+import Data.Attoparsec.Text
+import Database.PostgreSQL.Simple (close, connectPostgreSQL, defaultConnectInfo, formatQuery, Connection, ConnectInfo(..), FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.Pool
+import Data.String.Conversions.Monomorphic
 import Prosumma.Textual
 import Prosumma.Util
 import RIO hiding (withLogFunc)
 
 import qualified Database.PostgreSQL.Simple as PG
+import qualified RIO.Map as Map
 
 type ConnectionPool = Pool Connection
 
@@ -166,3 +171,38 @@ value1
   => Query -> q -> m v
 value1 = (fromOnly <$>) .* query1 
 
+type ConnectionStringMap = Map Text Text
+
+parseConnectionString :: Text -> Either String ConnectionStringMap
+parseConnectionString = parseOnly connectionStringParser
+
+connectionStringParser :: Parser ConnectionStringMap
+connectionStringParser = Map.fromList <$> pair `sepBy` space
+  where
+    pair = (,) <$> key <*> (char '=' *> value)
+    key = takeTill (== '=')
+    value = quotedValue <|> plainValue
+    plainValue = takeTill isSpace
+    quotedValue = char '\'' *> escapedString '\'' <* char '\''
+    escapedString quoteChar = scan False $ \escaping c ->
+        case (escaping, c) of
+            (True, _) -> Just False
+            (False, ch) -> if ch == quoteChar then Nothing else Just (ch == '\\')
+
+parseConnectInfo :: Text -> Either String ConnectInfo
+parseConnectInfo connectionString = do
+  keyValues <- parseConnectionString connectionString
+  let lookup = lookupIn keyValues
+  let host = lookup "localhost" "host" 
+  let dbname = lookup "postgres" "dbname"
+  let user = lookup "postgres" "user"
+  let password = lookup "" "password"
+  return defaultConnectInfo {
+    connectHost = host,
+    connectUser = user,
+    connectDatabase = dbname,
+    connectPassword = password
+  }
+  where
+    lookupIn :: Map Text Text -> Text -> Text -> String 
+    lookupIn keyValues def key = toString $ fromMaybe def $ Map.lookup key keyValues
