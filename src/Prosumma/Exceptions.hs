@@ -21,7 +21,7 @@ module Prosumma.Exceptions (
 
 import Control.Monad.Error.Class
 import Data.Generics.Product.Fields
-import RIO 
+import RIO
 
 type MatchException original matched = original -> Either matched original
 type HelpMatchException original matched = matched -> MatchException original matched
@@ -43,16 +43,16 @@ type HelpMatchException original matched = matched -> MatchException original ma
 -- > matchNoUsr = matchSqlState "NOUSR" err404 { errReasonPhrase = "The specified user does not exist." }  
 -- >
 -- > matchException (matchNoApp >=> matchNoUsr)
-matchException :: (Exception original, Exception matched) => MatchException original matched -> MatchException SomeException SomeException 
+matchException :: (Exception original, Exception matched) => MatchException original matched -> MatchException SomeException SomeException
 matchException handler original = case fromException original of
   Nothing -> return original
-  Just e -> bimap toException toException $ handler e 
+  Just e -> bimap toException toException $ handler e
 
 -- | A combinator useful for building `MatchException`s.
 -- 
 -- > matchSqlState :: ByteString -> ServerError -> MatchException SqlError ServerError
 -- > matchSqlState code = throwWhen $ \sqe -> sqlState sqe == code
-throwWhen :: (original -> Bool) -> HelpMatchException original matched 
+throwWhen :: (original -> Bool) -> HelpMatchException original matched
 throwWhen cond matched original = if cond original then throwError matched else return original
 
 -- | Used by `catchMatch` to attempt to match an exception. 
@@ -76,27 +76,27 @@ throwMatch match e = do
 -- >
 -- > catchMatch defaultSqlToServerErrors getUser
 catchMatch :: (MonadUnliftIO m, MonadThrow m) => MatchException SomeException SomeException -> m a -> m a
-catchMatch match action = catchAny action $ throwMatch match 
+catchMatch match action = catchAny action $ throwMatch match
 
 -- | Allows the specification of a fallback exception.
 --
 -- > matchAll (ServerError 500) >=> defaultExceptions
 matchAll :: Exception e => e -> MatchException SomeException SomeException
-matchAll = const . throwError . toException 
+matchAll = const . throwError . toException
 
 -- | Throws an exception if the HTTP Status falls outside the given range, otherwise returns its last argument.
-throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m r 
+throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m r
 throwOnHttpStatusOutsideRange range mkException response = let httpStatus = response^.(field @"httpStatus") in
   if httpStatus `notElem` range
     then throwM $ mkException httpStatus
     else return response
 
 -- | Throws an exception if the HTTP status falls outside the range 200..299.
-throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m r 
+throwOnHttpStatusError :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => (Int -> e) -> r -> m r
 throwOnHttpStatusError = throwOnHttpStatusOutsideRange [200..299]
 
 catchLog :: (MonadUnliftIO m, MonadReader env m, HasLogFunc env) => m a -> m a
-catchLog action = catchAny action $ \e -> logError (displayShow e) >> throwIO e 
+catchLog action = catchAny action $ \e -> logError (displayShow e) >> throwIO e
 
 maybeThrowM :: (Exception e, MonadThrow m) => e -> Maybe a -> m a
 maybeThrowM _ (Just a) = return a
