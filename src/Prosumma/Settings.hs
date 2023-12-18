@@ -22,15 +22,15 @@ import qualified RIO.HashMap as HM
 --
 -- Each @HashMap@ in the array must consist of a pair, one of which is keyed
 -- as "name" and the other as "value". Anything else is ignored.
-settings :: [TableItem] -> HashMap Text AttributeValue 
+settings :: [TableItem] -> HashMap Text AttributeValue
 settings [] = mempty
-settings (row:rows) = getRow <> getRows 
+settings (row:rows) = getRow <> getRows
   where
     getSetting key = HM.lookup key row
     getRows = settings rows
-    getRow = case getSetting "name" of 
-      Just (S key) -> fromMaybe mempty (getSetting "value" <&> HM.singleton key)
-      _other -> mempty 
+    getRow = case getSetting "name" of
+      Just (S key) -> maybe mempty (HM.singleton key) (getSetting "value")
+      _other -> mempty
 
 -- | Helper function to read settings types from DynamoDB tables.
 --
@@ -45,10 +45,10 @@ settings (row:rows) = getRow <> getRows
 readSettings
   :: ((forall s. ReadAttributeValue s => Text -> Either String s) -> Either String a)
   -> [TableItem]
-  -> Either String a 
-readSettings make items = make $ lookupAttributeValue (settings items) 
+  -> Either String a
+readSettings make items = make $ lookupAttributeValue (settings items)
 
-data SettingsScanException = SettingsScanException !Text !Int deriving (Show, Typeable) 
+data SettingsScanException = SettingsScanException !Text !Int deriving (Show, Typeable)
 instance Exception SettingsScanException
 
 data SettingsReadException = SettingsReadException !Text !String deriving (Show, Typeable)
@@ -60,7 +60,7 @@ instance Exception SettingsReadException
 -- throwing a @SettingsScanException@ if the table cannot be retrieved. 
 scanSettings
   :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m)
-  => Text -> ((forall s. ReadAttributeValue s => Text -> Either String s) -> Either String a) -> m a 
+  => Text -> ((forall s. ReadAttributeValue s => Text -> Either String s) -> Either String a) -> m a
 scanSettings table make = do
   response <- sendAWSThrowOnError (SettingsScanException table) $ newScan table
   case response ^. (field @"items") of
