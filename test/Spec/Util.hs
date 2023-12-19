@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 module Spec.Util (testUtil) where
 
+import Control.Lens (each, _Just)
 import Formatting ((%))
 import Prosumma.Util
 import RIO
@@ -16,6 +17,13 @@ data Structure = Structure {
 } deriving (Eq, Show)
 
 makeProsummaLenses ''Structure
+
+data Something = Something {
+  x :: !Int,
+  xs :: ![Maybe Int]
+} deriving (Eq, Show)
+
+makeLensesWith addL ''Something
 
 testUtil :: Spec
 testUtil = do
@@ -38,6 +46,11 @@ testUtil = do
       structure^.text `shouldBe` "xyz"
       structure^.int `shouldBe` 3
       (structure & int .~ 44) `shouldBe` Structure "xyz" 44
+  describe "addL" $ do
+    it "makes lenses with the suffix L" $ do
+      let something = Something 2 [Just 4]
+      something^.xL `shouldBe` 2
+      something^..xsL.each._Just `shouldBe` [4]
   describe "<<$>>" $
     it "fmaps fmap" $ do
       let x = Just (Just 3)

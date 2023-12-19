@@ -1,10 +1,13 @@
 module Prosumma.Util (
+  addL,
+  addSuffix,
   also,
   coalesce,
   displayText,
   fromTextReader,
   hush,
   makeProsummaLenses,
+  makeLensesWith,
   om,
   slipr,
   uformat,
@@ -22,6 +25,7 @@ module Prosumma.Util (
 ) where
 
 import Control.Lens hiding ((??), (.~), (.=))
+import Data.Char
 import Data.Either.Extra
 import Data.Text.Read
 import Data.Foldable
@@ -44,6 +48,20 @@ slipr f b c a = f a b c
 
 hush :: Either e a -> Maybe a
 hush = eitherToMaybe
+
+addL :: LensRules
+addL = addSuffix "L" 
+
+addSuffix :: String -> LensRules
+addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
+  where
+    suffixFieldNamer :: String -> FieldNamer
+    suffixFieldNamer suffix _ _ field = maybeToList $ do
+      let fieldPart = nameBase field
+      let cls = "Has" ++ capitalize fieldPart
+      return (MethodName (mkName cls) (mkName (fieldPart ++ suffix)))
+    capitalize [] = []
+    capitalize (c:cs) = toUpper c : cs
 
 makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
