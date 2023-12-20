@@ -35,6 +35,7 @@ library
       Prosumma.Exceptions
       Prosumma.Logging
       Prosumma.PG
+      Prosumma.PG.QueryRunner
       Prosumma.Push
       Prosumma.Servant
       Prosumma.Settings
