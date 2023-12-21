@@ -13,6 +13,8 @@ module Prosumma.PG (
   runPG,
   value1_,
   value1,
+  Connection,
+  QR.ConnectionPool,
   PG(..),
   QueryRunner,
   RPG,
@@ -22,7 +24,7 @@ import Control.Composition
 import Data.Char
 import Data.Functor
 import Data.Attoparsec.Text
-import Database.PostgreSQL.Simple (close, connectPostgreSQL, defaultConnectInfo, ConnectInfo(..), FromRow, ToRow)
+import Database.PostgreSQL.Simple (close, connectPostgreSQL, defaultConnectInfo, Connection, ConnectInfo(..), FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe

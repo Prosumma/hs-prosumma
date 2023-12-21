@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances, GADTs #-}
 
 module Prosumma.PG.QueryRunner (
+  ConnectionPool,
   SQLQuery(..),
   QueryRunner(..)
 ) where
