@@ -13,6 +13,7 @@ module Prosumma.Util (
   uformat,
   whenNothing,
   whenNothingM,
+  withResource,
   Coalesce(..),
   (??~),
   (<->),
@@ -27,6 +28,7 @@ module Prosumma.Util (
 import Control.Lens hiding ((??), (.~), (.=))
 import Data.Char
 import Data.Either.Extra
+import Data.Pool (Pool)
 import Data.Text.Read
 import Data.Foldable
 import Formatting
@@ -34,6 +36,7 @@ import Language.Haskell.TH
 import RIO hiding (Reader)
 import RIO.Map (singleton)
 
+import qualified Data.Pool as Pool
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
 
@@ -184,3 +187,6 @@ displayText = display
 
 uformat :: Format Utf8Builder a -> a
 uformat m = runFormat m (display . T.toStrict . T.toLazyText)
+
+withResource :: MonadUnliftIO m => Pool a -> (a -> m b) -> m b
+withResource pool action = withRunInIO $ \runInIO -> Pool.withResource pool (runInIO . action)
