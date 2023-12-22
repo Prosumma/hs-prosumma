@@ -13,8 +13,9 @@ module Prosumma.PG (
   runPG,
   value1_,
   value1,
+  withTransaction,
   Connection,
-  QR.ConnectionPool,
+  ConnectionPool,
   PG(..),
   QueryRunner,
   RPG,
@@ -29,9 +30,11 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.String.Conversions.Monomorphic
-import Prosumma.PG.QueryRunner (QueryRunner, SQLQuery(..))
+import Prosumma.PG.QueryRunner (ConnectionPool, QueryRunner, SQLQuery(..))
+import Prosumma.Pool
 import RIO hiding (log)
 
+import qualified Database.PostgreSQL.Simple as PG
 import qualified Prosumma.PG.QueryRunner as QR
 import qualified RIO.Map as Map
 
@@ -42,6 +45,9 @@ import qualified RIO.Map as Map
 data PG r = PG { pgQueryRunner :: r, pgLogFunc :: LogFunc }
 
 type RPG r = RIO (PG r)
+
+instance HasPool Connection (PG ConnectionPool) where
+  getPool PG{..} = pgQueryRunner
 
 runPG :: MonadIO m => r -> LogFunc -> RPG r a -> m a
 runPG runner logFunc = runRIO (PG runner logFunc)
@@ -55,7 +61,7 @@ instance QueryRunner r => QueryRunner (PG r) where
   log sql PG{..} = QR.log sql pgQueryRunner
 
 executeLogged
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m)
   => SQLQuery -> m Int64
 executeLogged sql = do
   runner <- ask
@@ -63,7 +69,7 @@ executeLogged sql = do
   QR.execute sql runner
 
 queryLogged
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, FromRow r)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, FromRow r)
   => SQLQuery -> m [r]
 queryLogged sql = do
   runner <- ask
@@ -71,44 +77,47 @@ queryLogged sql = do
   QR.query sql runner
 
 execute_ 
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m)
   => Query -> m Int64
 execute_ = executeLogged . SQLQuery 
 
 execute
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, ToRow q)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, ToRow q)
   => Query -> q -> m Int64
 execute = executeLogged .* ParameterizedSQLQuery
 
 query_
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, FromRow r)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, FromRow r)
   => Query -> m [r]
 query_ = queryLogged . SQLQuery
 
 query
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, ToRow q, FromRow r)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, ToRow q, FromRow r)
   => Query -> q -> m [r]
 query = queryLogged .* ParameterizedSQLQuery
 
 query1_
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromRow r)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, MonadThrow m, FromRow r)
   => Query -> m r
 query1_ = query_ >=> head
 
 query1
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, ToRow q, MonadThrow m, FromRow r)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, ToRow q, MonadThrow m, FromRow r)
   => Query -> q -> m r
 query1 = query >=*> head
 
 value1_
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, MonadThrow m, FromField v)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, MonadThrow m, FromField v)
   => Query -> m v
 value1_ = (fromOnly <$>) . query1_ 
 
 value1
-  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadIO m, MonadThrow m, ToRow q, FromField v)
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, MonadThrow m, ToRow q, FromField v)
   => Query -> q -> m v
 value1 = (fromOnly <$>) .* query1 
+
+withTransaction :: MonadUnliftIO m => Connection -> m a -> m a 
+withTransaction conn action = withRunInIO $ \runInIO -> PG.withTransaction conn (runInIO action) 
 
 type ConnectionStringMap = Map Text Text
 

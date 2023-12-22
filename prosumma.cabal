@@ -36,6 +36,7 @@ library
       Prosumma.Logging
       Prosumma.PG
       Prosumma.PG.QueryRunner
+      Prosumma.Pool
       Prosumma.Push
       Prosumma.Servant
       Prosumma.Settings

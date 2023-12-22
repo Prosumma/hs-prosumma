@@ -3,19 +3,21 @@
 module Prosumma.PG.QueryRunner (
   ConnectionPool,
   QueryRunner(..),
-  SQLQuery(..),
-  withConnectionPool
+  SQLQuery(..)
 ) where
 
-import Data.Pool
 import Database.PostgreSQL.Simple (formatQuery, Connection)
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.Types
+import Prosumma.Pool
 import Prosumma.Textual
 import RIO hiding (log)
 
 import qualified Database.PostgreSQL.Simple as PG
+
+logSource :: LogSource
+logSource = "SQL"
 
 formatSQLQuery :: Connection -> SQLQuery -> IO Text
 formatSQLQuery _ (SQLQuery sql) = return $ toText $ fromQuery sql
@@ -35,14 +37,11 @@ instance QueryRunner Connection where
   execute (ParameterizedSQLQuery sql params) conn = liftIO $ PG.execute conn sql params
   query (SQLQuery sql) conn = liftIO $ PG.query_ conn sql
   query (ParameterizedSQLQuery sql params) conn = liftIO $ PG.query conn sql params
-  log sql conn = liftIO (formatSQLQuery conn sql) >>= logDebugS "sql" . display
+  log sql conn = liftIO (formatSQLQuery conn sql) >>= logDebugS logSource . display
 
 type ConnectionPool = Pool Connection
 
-withConnectionPool :: MonadUnliftIO m => ConnectionPool -> (Connection -> m a) -> m a
-withConnectionPool pool action = withRunInIO $ \runInIO -> withResource pool $ runInIO . action 
-
 instance QueryRunner ConnectionPool where
-  execute sql pool = withConnectionPool pool (execute sql)
-  query sql pool = withConnectionPool pool (query sql)
-  log sql pool = withConnectionPool pool (log sql)
+  execute sql pool = withResource pool (execute sql) 
+  query sql pool = withResource pool (query sql)
+  log sql pool = withResource pool (log sql)
