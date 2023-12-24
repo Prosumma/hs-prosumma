@@ -14,6 +14,7 @@ module Prosumma.PG (
   value1_,
   value1,
   withTransaction,
+  withTransaction_,
   Connection,
   ConnectionPool,
   Only,
@@ -33,7 +34,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.String.Conversions.Monomorphic
-import Prosumma.PG.QueryRunner (withTransaction, ConnectionPool, QueryRunner, SQLQuery(..), TransactionRunner)
+import Prosumma.PG.QueryRunner (ConnectionPool, QueryRunner, SQLQuery(..), TransactionRunner)
 import RIO hiding (log)
 
 import qualified Prosumma.PG.QueryRunner as QR
@@ -96,6 +97,12 @@ value1
   :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, MonadThrow m, ToRow q, FromField v)
   => Query -> q -> m v
 value1 = (fromOnly <$>) .* query1 
+
+withTransaction :: (MonadReader env m, TransactionRunner env, MonadUnliftIO m) => m a -> m a 
+withTransaction action = ask >>= flip QR.transact action
+
+withTransaction_ :: (MonadReader env m, TransactionRunner env, MonadUnliftIO m) => m a -> m () 
+withTransaction_ = void . withTransaction 
 
 type ConnectionStringMap = Map Text Text
 

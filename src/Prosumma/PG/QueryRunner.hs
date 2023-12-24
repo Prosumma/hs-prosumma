@@ -4,8 +4,7 @@ module Prosumma.PG.QueryRunner (
   ConnectionPool,
   QueryRunner(..),
   SQLQuery(..),
-  TransactionRunner(..),
-  withTransaction
+  TransactionRunner(..)
 ) where
 
 import Data.Pool (Pool)
@@ -70,9 +69,6 @@ class TransactionRunner c where
 
 instance TransactionRunner Connection where
   transact conn action = withRunInIO $ \runInIO -> PG.withTransaction conn (runInIO action)
-
-withTransaction :: (MonadReader env m, TransactionRunner env, MonadUnliftIO m) => m a -> m a 
-withTransaction action = ask >>= flip transact action
 
 type ConnectionPool = Pool Connection
 
