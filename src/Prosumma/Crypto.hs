@@ -33,6 +33,18 @@ class HasMasterKeyArn a where
 data EncryptionException = EncryptionException deriving (Show, Typeable)
 instance Exception EncryptionException
 
+-- | Encrypts a message given a KMS master key arn.
+--
+-- Here's how this works in a nutshell:
+-- 
+-- 1. We ask KMS for a new password/ciphertext pair.
+-- 2. We use the plaintext password to encrypt the message with TripleSec.
+-- 3. We then prefix the encrypted message with the ciphertext. The result
+-- is our encrypted message.
+--
+-- The first 184 bytes of the encrypted message contain the password used
+-- to encrypt the message, but of course this password is itself encrypted
+-- by KMS.
 encryptMessageWithMasterKey
   :: (MonadUnliftIO m, MonadReader env m, HasAWSEnv env)
   => Text -> ByteString -> m ByteString
@@ -45,6 +57,9 @@ encryptMessageWithMasterKey masterKeyArn message = do
     flip catch (throwOnTripleSecException EncryptionException) $ 
       BS.append ciphertextBlob <$> encryptIO password message
 
+-- | Encrypts a message using the KMS master key arn in the context.
+-- 
+-- See encryptMessageWithMasterKey for a fuller explanation.
 encryptMessage
   :: (MonadUnliftIO m, MonadReader env m, HasMasterKeyArn env, HasAWSEnv env)
   => ByteString -> m ByteString
@@ -53,6 +68,13 @@ encryptMessage = asks getMasterKeyArn >>=> encryptMessageWithMasterKey
 data DecryptionException = DecryptionException deriving (Show, Typeable)
 instance Exception DecryptionException
 
+-- | Decrypts a message given a KMS master key arn.
+-- 
+-- This just performs the actions of `encryptMessage` in reverse.
+-- 
+-- 1. Get the first 184 bytes. This is the encrypted password.
+-- 2. Decrypt the password with KMS.
+-- 3. Decrypt the message with the decrypted password.
 decryptMessage 
   :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, HasAWSEnv env)
   => ByteString -> m ByteString

@@ -10,7 +10,6 @@ module Prosumma.Settings (
 ) where
 
 import Amazonka.DynamoDB
-import Control.Monad.Except
 import Data.Generics.Product
 import Prosumma.AWS
 import Prosumma.AWS.DynamoDB
