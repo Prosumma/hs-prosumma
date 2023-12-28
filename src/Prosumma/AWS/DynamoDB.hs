@@ -21,6 +21,7 @@ import Data.Generics.Product
 import Prosumma.AWS
 import Prosumma.Textual
 import RIO
+import RIO.Text
 import Text.Printf
 
 import qualified RIO.HashMap as HM
@@ -49,6 +50,10 @@ instance ReadAttributeValue Int where
 
 instance ReadAttributeValue Bool where
   readAttributeValue (BOOL bool) = Just bool
+  readAttributeValue _other = Nothing
+
+instance ReadAttributeValue String where
+  readAttributeValue (S text) = Just $ unpack text 
   readAttributeValue _other = Nothing
 
 instance ReadAttributeValue s => ReadAttributeValue (Maybe s) where
