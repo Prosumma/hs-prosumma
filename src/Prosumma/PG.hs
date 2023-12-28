@@ -6,6 +6,8 @@ module Prosumma.PG (
   connectPostgreSQL,
   execute_,
   execute,
+  exists_,
+  exists,
   parseConnectInfo,
   query_,
   query,
@@ -14,8 +16,8 @@ module Prosumma.PG (
   runPG,
   value1_,
   value1,
-  withTransaction,
   withTransaction_,
+  withTransaction,
   Connection,
   ConnectInfo(..),
   ConnectionPool,
@@ -33,6 +35,7 @@ import Data.Functor
 import Data.Attoparsec.Text
 import Database.PostgreSQL.Simple (close, connect, connectPostgreSQL, defaultConnectInfo, Connection, ConnectInfo(..), FromRow, ToRow)
 import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.Types
 import Data.List.Safe
 import Data.String.Conversions.Monomorphic
@@ -99,6 +102,25 @@ value1
   :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, MonadThrow m, ToRow q, FromField v)
   => Query -> q -> m v
 value1 = (fromOnly <$>) .* query1 
+
+data Exists = Exists deriving Show
+
+instance FromRow Exists where
+  fromRow = return Exists
+
+exists_
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m)
+  => Query -> m Bool
+exists_ sql = do
+  rows :: [Exists] <- query_ sql
+  return $ not $ null rows
+
+exists
+  :: (MonadReader env m, QueryRunner env, HasLogFunc env, MonadUnliftIO m, ToRow q)
+  => Query -> q -> m Bool
+exists sql q = do
+  rows :: [Exists] <- query sql q
+  return $ not $ null rows
 
 withTransaction :: (MonadReader env m, TransactionRunner env, MonadUnliftIO m) => m a -> m a 
 withTransaction action = ask >>= flip QR.transact action
