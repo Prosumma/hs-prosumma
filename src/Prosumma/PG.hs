@@ -33,7 +33,7 @@ import Control.Composition
 import Data.Char
 import Data.Functor
 import Data.Attoparsec.Text
-import Database.PostgreSQL.Simple (close, connect, connectPostgreSQL, defaultConnectInfo, Connection, ConnectInfo(..), FromRow, ToRow)
+import Database.PostgreSQL.Simple (close, connect, connectPostgreSQL, defaultConnectInfo, Connection, ConnectInfo(..), ToRow)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.Types
