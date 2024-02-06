@@ -11,12 +11,13 @@ module Prosumma.Cache (
   cacheDelete,
   cacheDeletes,
   cacheGet,
-  cacheGets,
   cacheGetAll,
   cacheGetAllResults,
+  cacheGetFetchResult,
   cacheGetKeys,
   cacheGetResult,
   cacheGetResults,
+  cacheGets,
   cacheInsert,
   cacheInserts,
   cachePut,
@@ -24,6 +25,7 @@ module Prosumma.Cache (
   clearCache,
   createCache,
   newCache,
+  resultToFetchResult,
   resultToMaybe,
   setCache,
   sizeCache,
@@ -90,6 +92,11 @@ resultToMaybe :: Result v -> Maybe v
 resultToMaybe (Cached v) = Just v
 resultToMaybe (Fetched _ (Right v)) = Just v
 resultToMaybe _ = Nothing
+
+resultToFetchResult :: Result v -> FetchResult v
+resultToFetchResult (Cached v) = Right v
+resultToFetchResult (Fetched _ (Right v)) = Right v
+resultToFetchResult (Fetched _ (Left e)) = Left e
 
 maybeToFetchResult :: Maybe v -> FetchResult v
 maybeToFetchResult (Just v) = Right v
@@ -174,6 +181,9 @@ cacheGetResult key Cache{..} = do
   putMVar cacheStore resultStore
   return result
 
+cacheGetFetchResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (FetchResult v)
+cacheGetFetchResult key cache = resultToFetchResult <$> cacheGetResult key cache
+
 -- | Same as 'cacheGetResult' but gets more than one key.
 --
 -- When attempting to get multiple keys, this method is more efficient than calling @cacheGetResult@ multiple times.
@@ -201,7 +211,7 @@ cacheGetKeys Cache{..} = do
   putMVar cacheStore store
   return keys
 
--- | Simplified version of 'cacheGet 
+-- | Simplified version of @cacheGetResult@.
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
 cacheGet key cache = resultToMaybe <$> cacheGetResult key cache
 
