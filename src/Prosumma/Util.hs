@@ -16,6 +16,7 @@ module Prosumma.Util (
   withResource,
   Coalesce(..),
   (??~),
+  (?>>=),
   (<->),
   (<#>),
   (<<&>>),
@@ -110,6 +111,15 @@ whenNothingM cond action = cond >>= maybe action return
 
 fromTextReader :: Reader a -> Text -> Maybe a
 fromTextReader reader text = hush (reader text) <&> fst
+
+infixl 1 ?>>=
+
+(?>>=) :: Monad m => m (Maybe a) -> (a -> m (Maybe b)) -> m (Maybe b)
+ma ?>>= f = do
+  ma' <- ma
+  case ma' of
+    Just a -> f a
+    Nothing -> return Nothing
 
 -- | Shortcut to create a pair.
 (<->) :: a -> b -> (a, b)
