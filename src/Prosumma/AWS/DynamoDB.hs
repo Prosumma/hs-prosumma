@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds, RankNTypes, TypeApplications #-}
 
 module Prosumma.AWS.DynamoDB (
+  getItem,
+  getItem',
   lookupAttributeValue,
   readErrorKeyNotFound,
   readErrorIncorrectType,
@@ -121,22 +123,47 @@ readTableItemWithIndex read index item = case readTableItem read item of
 data TableScanException = TableScanException !Text !Int deriving (Show, Typeable)
 instance Exception TableScanException
 
+data TableGetItemException = TableGetItemException !Text !Int deriving (Show, Typeable) 
+instance Exception TableGetItemException
+
 data TableReadException = TableReadException !Text !String deriving (Show, Typeable)
 instance Exception TableReadException
 
 -- | Helper function to scan a DynamoDB table into a list of some type. 
 --
--- This is best used with @readTableItem@, e.g.,
+-- This is best used with @readTableItemWithIndex@, e.g.,
 --
--- > newtype Foo = Foo !Text
+-- > newtype Foo = Foo Text
 -- >
--- > scanFoo :: RIO [a]  
--- > scanFoo = scanTable "Foo" $ readTableItem $ \read -> Foo <$> read "Foo" 
+-- > scanFoo :: RIO Env [Foo]
+-- > scanFoo = scanTable "Foo" $ readTableItemWithIndex $ \read -> Foo <$> read "Foo" 
 scanTable :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> (Int -> TableItem -> Either String a) -> m [a] 
 scanTable table read = do
   response <- sendAWSThrowOnError (TableScanException table) $ newScan table
   case response ^. (field @"items") of
     Just items -> case zipWithM read [0..] items of
       Right records -> return records
-      Left e -> throwIO $ TableReadException table e 
+      Left e -> throwM $ TableReadException table e 
     Nothing -> return []
+
+getItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> (TableItem -> Either String a) -> m (Maybe a) 
+getItem' table key read = do
+  response <- sendAWSThrowOnError (TableGetItemException table) $ newGetItem table & (field @"key") .~ key
+  case response ^. (field @"item") of
+    Just item -> case read item of
+      Right item -> return $ Just item
+      Left e -> throwM $ TableReadException table e 
+    Nothing -> return Nothing
+
+-- | Helper function to get a single DynamoDB table item by key and read it into a value.
+--
+-- If the value doesn't exist, `Nothing` is returned. If the value can't be read, an exception is thrown.
+--
+-- This is best used with @readTableItem@, e.g.,
+--
+-- > data Foo = Foo !Text !Text
+-- >
+-- > getFoo :: Text -> RIO Env (Maybe Foo) 
+-- > getFoo name = getItem "foo" "name" name $ readTableItem $ \read -> Foo <$> read "name" <*> read "value"
+getItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> Text -> AttributeValue -> (TableItem -> Either String a) -> m (Maybe a) 
+getItem table keyName keyValue = getItem' table (HM.singleton keyName keyValue)
