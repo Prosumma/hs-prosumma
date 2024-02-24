@@ -71,14 +71,14 @@ readErrorKeyNotFound = "The key '%s' was not found."
 readErrorIncorrectType :: String
 readErrorIncorrectType = "The key '%s' was found but was not the correct type."
 
-type ReadAttributeValueByKey v = ReadAttributeValue v => Text -> Either String v
-
 lookupAttributeValue :: ReadAttributeValue v => TableItem -> Text -> Either String v
 lookupAttributeValue item key = maybeToEither keyNotFound read >>= maybeToEither incorrectType . readAttributeValue
   where
     read = HM.lookup key item 
     keyNotFound = printf readErrorKeyNotFound key
     incorrectType = printf readErrorIncorrectType key
+
+type ReadAttributeValueByKey v = ReadAttributeValue v => Text -> Either String v
 
 -- | Reads a @TableItem@ into another type.
 --
