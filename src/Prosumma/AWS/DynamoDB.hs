@@ -57,7 +57,15 @@ instance ReadAttributeValue String where
   readAttributeValue _other = Nothing
 
 instance ReadAttributeValue s => ReadAttributeValue (Maybe s) where
-  readAttributeValue = Just . readAttributeValue 
+  readAttributeValue v = case readAttributeValue v of 
+    -- To understand better why this isn't crazy,
+    -- look at the implementation of lookupAttributeValue,
+    -- specifically the use of maybeToEither.
+    -- `Just (Just a)` means that reading succeeded and 
+    -- the result is `Just a`. `Nothing` means that
+    -- reading failed.
+    Just a -> Just (Just a)
+    Nothing -> Nothing
 
 readErrorKeyNotFound :: String
 readErrorKeyNotFound = "The key '%s' was not found."
