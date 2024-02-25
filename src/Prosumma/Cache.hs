@@ -85,6 +85,23 @@ data Sentinel = Sentinel deriving (Eq, Ord, Show)
 instance Hashable Sentinel where
   hashWithSalt salt _ = hashWithSalt salt (2305843009213693951 :: Int)
 
+withLockedStore :: MonadIO m => (Store k v -> m (a, Store k v)) -> Cache k v -> m a
+withLockedStore useStore Cache{..} = do
+  store <- takeMVar cacheStore
+  (result, resultStore) <- useStore store
+  putMVar cacheStore resultStore 
+  return result
+
+withLockedStore_ :: MonadIO m => (Store k v -> m (Store k v)) -> Cache k v -> m ()
+withLockedStore_ useStore Cache{..} = takeMVar cacheStore >>= useStore >>= putMVar cacheStore
+
+ofLockedStore :: MonadIO m => (Store k v -> a) -> Cache k v -> m a
+ofLockedStore useStore Cache{..} = do
+  store <- takeMVar cacheStore
+  let result = useStore store
+  putMVar cacheStore store
+  return result
+
 noException :: SomeException
 noException = toException NoException
 
@@ -148,14 +165,10 @@ newStore :: MonadIO m => HashMap k v -> m (Store k v)
 newStore store = liftIO getCurrentTime >>= \now -> return $ HM.map (Entry now) store
 
 cachePut :: (Hashable k, MonadIO m) => k -> Maybe v -> Cache k v -> m ()
-cachePut key maybeValue Cache{..} = takeMVar cacheStore
-  >>= storePut key (maybeToFetchResult maybeValue)
-  >>= putMVar cacheStore
+cachePut key maybeValue = withLockedStore_ $ storePut key (maybeToFetchResult maybeValue)
 
 cachePuts :: (Hashable k, MonadIO m) => HashMap k (Maybe v) -> Cache k v -> m ()
-cachePuts newEntries Cache{..} = takeMVar cacheStore
-  >>= storePuts (HM.map maybeToFetchResult newEntries)
-  >>= putMVar cacheStore
+cachePuts newEntries = withLockedStore_ $ storePuts (HM.map maybeToFetchResult newEntries)
 
 cacheDelete :: (Hashable k, MonadIO m) => k -> Cache k v -> m ()
 cacheDelete key = cachePut key Nothing
@@ -188,28 +201,16 @@ cacheGetFetchResult key cache = resultToFetchResult <$> cacheGetResult key cache
 --
 -- When attempting to get multiple keys, this method is more efficient than calling @cacheGetResult@ multiple times.
 cacheGetResults :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Result v))
-cacheGetResults keys Cache{..} = do
-  store <- takeMVar cacheStore
-  (result, resultStore) <- storeGetResults keys cacheTTL cacheFetch store
-  putMVar cacheStore resultStore
-  return result
+cacheGetResults keys cache@Cache{..} = flip withLockedStore cache $ \store -> storeGetResults keys cacheTTL cacheFetch store 
 
 cacheGetAllResults :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Result v))
-cacheGetAllResults Cache{..} = do
-  store <- takeMVar cacheStore
-  (result, resultStore) <- storeGetResults (HM.keys store) cacheTTL cacheFetch store
-  putMVar cacheStore resultStore
-  return result
+cacheGetAllResults cache@Cache{..} = flip withLockedStore cache $ \store -> storeGetResults (HM.keys store) cacheTTL cacheFetch store
 
 cacheGetAll :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Maybe v)) 
 cacheGetAll cache = HM.map resultToMaybe <$> cacheGetAllResults cache
 
 cacheGetKeys :: MonadIO m => Cache k v -> m [k]
-cacheGetKeys Cache{..} = do
-  store <- takeMVar cacheStore
-  let keys = HM.keys store
-  putMVar cacheStore store
-  return keys
+cacheGetKeys = ofLockedStore HM.keys 
 
 -- | Simplified version of @cacheGetResult@.
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
@@ -234,8 +235,4 @@ clearCache :: (Hashable k, MonadIO m) => Cache k v -> m ()
 clearCache = setCache mempty
 
 sizeCache :: MonadIO m => Cache k v -> m Int
-sizeCache Cache{..} = do 
-  store <- takeMVar cacheStore
-  let size = HM.size store
-  putMVar cacheStore store
-  return size
+sizeCache = ofLockedStore HM.size 
