@@ -14,9 +14,12 @@ module Prosumma.AWS.DynamoDB (
   ReadAttributeValueByKey,
   TableItem,
   TableReadException(..),
-  TableScanException(..)
+  TableScanException(..),
+  ToItem(..),
+  (.=)
 ) where
 
+import Amazonka
 import Amazonka.DynamoDB
 import Data.Either.Extra
 import Data.Generics.Product
@@ -167,3 +170,27 @@ getItem' table key read = do
 -- > getFoo name = getItem "foo" "name" name $ readTableItem $ \read -> Foo <$> read "name" <*> read "value"
 getItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> Text -> AttributeValue -> (TableItem -> Either String a) -> m (Maybe a) 
 getItem table keyName keyValue = getItem' table (HM.singleton keyName keyValue)
+
+class ToAttributeValue a where
+  toAttributeValue :: a -> AttributeValue
+
+instance ToAttributeValue Text where
+  toAttributeValue = S
+
+instance ToAttributeValue Int where
+  toAttributeValue = N . pack . show
+
+instance ToAttributeValue ByteString where
+  toAttributeValue b = B (Base64 b) 
+
+instance ToAttributeValue a => ToAttributeValue (Maybe a) where
+  toAttributeValue Nothing = NULL
+  toAttributeValue (Just a) = toAttributeValue a
+
+infixr 8 .=
+
+(.=) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
+key .= value = (key, toAttributeValue value)
+
+class ToItem a where
+  toItem :: a -> TableItem
