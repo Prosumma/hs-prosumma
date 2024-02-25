@@ -85,8 +85,8 @@ data Sentinel = Sentinel deriving (Eq, Ord, Show)
 instance Hashable Sentinel where
   hashWithSalt salt _ = hashWithSalt salt (2305843009213693951 :: Int)
 
-withLockedStore :: MonadIO m => (Store k v -> m (a, Store k v)) -> Cache k v -> m a
-withLockedStore useStore Cache{..} = do
+withLockedStore :: MonadIO m => Cache k v -> (Store k v -> m (a, Store k v)) -> m a
+withLockedStore Cache{..} useStore = do
   store <- takeMVar cacheStore
   (result, resultStore) <- useStore store
   putMVar cacheStore resultStore 
@@ -188,11 +188,7 @@ cacheInserts newEntries = cachePuts $ HM.map Just newEntries
 -- In most cases, callers will not care what the @Result@ is. They just want the
 -- value. In that case, use 'cacheGet'. 
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v)
-cacheGetResult key Cache{..} = do
-  store <- takeMVar cacheStore
-  (result, resultStore) <- storeGetResult key cacheTTL cacheFetch store
-  putMVar cacheStore resultStore
-  return result
+cacheGetResult key cache@Cache{..} = withLockedStore cache $ \store -> storeGetResult key cacheTTL cacheFetch store
 
 cacheGetFetchResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (FetchResult v)
 cacheGetFetchResult key cache = resultToFetchResult <$> cacheGetResult key cache
@@ -201,10 +197,10 @@ cacheGetFetchResult key cache = resultToFetchResult <$> cacheGetResult key cache
 --
 -- When attempting to get multiple keys, this method is more efficient than calling @cacheGetResult@ multiple times.
 cacheGetResults :: (Hashable k, MonadUnliftIO m, Foldable f) => f k -> Cache k v -> m (HashMap k (Result v))
-cacheGetResults keys cache@Cache{..} = flip withLockedStore cache $ \store -> storeGetResults keys cacheTTL cacheFetch store 
+cacheGetResults keys cache@Cache{..} = withLockedStore cache $ \store -> storeGetResults keys cacheTTL cacheFetch store 
 
 cacheGetAllResults :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Result v))
-cacheGetAllResults cache@Cache{..} = flip withLockedStore cache $ \store -> storeGetResults (HM.keys store) cacheTTL cacheFetch store
+cacheGetAllResults cache@Cache{..} = withLockedStore cache $ \store -> storeGetResults (HM.keys store) cacheTTL cacheFetch store
 
 cacheGetAll :: (Hashable k, MonadUnliftIO m) => Cache k v -> m (HashMap k (Maybe v)) 
 cacheGetAll cache = HM.map resultToMaybe <$> cacheGetAllResults cache
