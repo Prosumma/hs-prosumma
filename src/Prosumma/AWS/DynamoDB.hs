@@ -16,7 +16,7 @@ module Prosumma.AWS.DynamoDB (
   TableReadException(..),
   TableScanException(..),
   ToItem(..),
-  (.=)
+  (=:)
 ) where
 
 import Amazonka
@@ -41,7 +41,8 @@ instance ReadAttributeValue Text where
   readAttributeValue _other = Nothing
 
 instance ReadAttributeValue ByteString where
-  readAttributeValue = readAttributeValue >=> fromText 
+  readAttributeValue (B (Base64 b)) = Just b
+  readAttributeValue _other = Nothing
 
 instance ReadAttributeValue Integer where
   readAttributeValue (N integer) = fromText integer 
@@ -177,20 +178,26 @@ class ToAttributeValue a where
 instance ToAttributeValue Text where
   toAttributeValue = S
 
+instance ToAttributeValue String where
+  toAttributeValue = S . pack
+
 instance ToAttributeValue Int where
   toAttributeValue = N . pack . show
 
+instance ToAttributeValue Integer where
+  toAttributeValue = N . pack . show
+
 instance ToAttributeValue ByteString where
-  toAttributeValue b = B (Base64 b) 
+  toAttributeValue = B . Base64 
 
 instance ToAttributeValue a => ToAttributeValue (Maybe a) where
   toAttributeValue Nothing = NULL
   toAttributeValue (Just a) = toAttributeValue a
 
-infixr 8 .=
+infixr 8 =: 
 
-(.=) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
-key .= value = (key, toAttributeValue value)
+(=:) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
+key =: value = (key, toAttributeValue value)
 
 class ToItem a where
   toItem :: a -> TableItem

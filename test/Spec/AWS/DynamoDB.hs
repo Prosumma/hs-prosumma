@@ -25,11 +25,18 @@ readWatusi = readTableItem makeWatusi
 readWatusiWithIndex :: Int -> TableItem -> Either String Watusi
 readWatusiWithIndex = readTableItemWithIndex makeWatusi
 
+instance ToItem Watusi where
+  toItem Watusi{..} = HM.fromList [
+      "foo" =: watusiFoo,
+      "bar" =: watusiBar,
+      "baz" =: watusiBaz
+    ]
+
 testDynamoDB :: Spec
 testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
-      let item = HM.fromList [("foo", S "cool"), ("bar", N "35"), ("baz", S "baz")]
+      let item = toItem $ Watusi "cool" 35 (Just "baz")
       let result = readWatusi item
       result `shouldBe` Right (Watusi "cool" 35 (Just "baz"))
     it "gives an error if a key is not found" $ do
@@ -42,7 +49,7 @@ testDynamoDB = do
       result `shouldBe` Left "The key 'foo' was found but was not the correct type."
   describe "readTableItemWithIndex" $ do
     it "reads a table item" $ do
-      let item = HM.fromList [("foo", S "cool"), ("bar", N "35"), ("baz", S "baz")]
+      let item = toItem $ Watusi "cool" 35 (Just "baz")
       let result = readWatusiWithIndex 0 item
       result `shouldBe` Right (Watusi "cool" 35 (Just "baz"))
     it "indicates the index when an error occurs" $ do
