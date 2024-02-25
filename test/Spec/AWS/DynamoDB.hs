@@ -36,9 +36,10 @@ testDynamoDB :: Spec
 testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
-      let item = toItem $ Watusi "cool" 35 (Just "baz")
+      let watusi = Watusi "cool" 35 (Just "baz")
+      let item = toItem watusi 
       let result = readWatusi item
-      result `shouldBe` Right (Watusi "cool" 35 (Just "baz"))
+      result `shouldBe` Right watusi 
     it "gives an error if a key is not found" $ do
       let item = HM.empty 
       let result = readWatusi item
@@ -49,9 +50,10 @@ testDynamoDB = do
       result `shouldBe` Left "The key 'foo' was found but was not the correct type."
   describe "readTableItemWithIndex" $ do
     it "reads a table item" $ do
-      let item = toItem $ Watusi "cool" 35 (Just "baz")
+      let watusi = Watusi "cool" 35 (Just "baz")
+      let item = toItem watusi 
       let result = readWatusiWithIndex 0 item
-      result `shouldBe` Right (Watusi "cool" 35 (Just "baz"))
+      result `shouldBe` Right watusi 
     it "indicates the index when an error occurs" $ do
       let item = HM.empty 
       let result = readWatusiWithIndex 2 item
