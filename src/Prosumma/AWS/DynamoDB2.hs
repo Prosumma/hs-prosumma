@@ -4,7 +4,7 @@ module Prosumma.AWS.DynamoDB2 (
   getItem,
   getItem',
   putItem,
-  query,
+  query',
   readItem,
   scan,
   scan',
@@ -197,8 +197,8 @@ putItem table item = void $ sendAWSThrowHTTPStatus req
     req :: PutItem
     req = newPutItem table & (field @"item") .~ toItem item
 
-query :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Query -> m [i]
-query q = do
+query' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Query -> m [i]
+query' q = do
   res <- sendAWSThrowHTTPStatus q
   let (errors, items') = partitionEithers $ map fromItem $ res^.(field @"items")
   -- A single bad record could spike our data, so we log it and move on. 
