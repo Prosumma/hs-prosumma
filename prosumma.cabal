@@ -28,6 +28,7 @@ library
       Prosumma.Aeson
       Prosumma.AWS
       Prosumma.AWS.DynamoDB
+      Prosumma.AWS.DynamoDB2
       Prosumma.Cache
       Prosumma.Crypto
       Prosumma.Environment
