@@ -1,9 +1,18 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications, TypeOperators #-}
 
 module Prosumma.AWS.DynamoDB2 (
+  getItem,
+  getItem',
+  putItem,
   readItem,
-  FromAttributeValue(..),
+  scan,
+  scan',
+  sendDynamoDB,
+  DynamoDBException(..),
+  DynamoDBHttpStatusException(..),
+  DynamoDBItemException(..),
   FromAttributeResult(..),
+  FromAttributeValue(..),
   FromItem(..),
   TableItem,
   ToAttributeValue(..),
@@ -13,8 +22,12 @@ module Prosumma.AWS.DynamoDB2 (
 
 import Amazonka
 import Amazonka.DynamoDB
+import Data.Generics.Product
+import Data.Type.Equality (type (~))
+import Data.Typeable (cast)
 import Data.UUID (UUID)
 import Prosumma.AWS
+import Prosumma.Exceptions
 import Prosumma.Textual
 import RIO
 
@@ -88,7 +101,8 @@ instance FromAttributeValue a => FromAttributeValue (Maybe a) where
     MissingValue -> Success Nothing
     InvalidFormat -> InvalidFormat
 
-data ItemError = ItemMissingValue Text | ItemInvalidFormat Text (Maybe AttributeValue)
+data ItemError = ItemMissingValue Text | ItemInvalidFormat Text (Maybe AttributeValue) deriving (Show, Typeable)
+instance Exception ItemError
 
 class FromItem a where
   fromItem :: TableItem -> Either ItemError a
@@ -132,3 +146,69 @@ key =: value = (key, toAttributeValue value)
 
 class ToItem a where 
   toItem :: a -> TableItem
+
+data DynamoDBException = forall e. Exception e => DynamoDBException e deriving Typeable 
+instance Exception DynamoDBException
+
+instance Show DynamoDBException where
+  show (DynamoDBException e) = show e
+
+newtype DynamoDBHttpStatusException = DynamoDBHttpStatusException Int deriving (Show, Typeable)
+
+instance Exception DynamoDBHttpStatusException where
+  toException = toException . DynamoDBException
+  fromException x = do
+    DynamoDBException e <- fromException x
+    cast e
+
+newtype DynamoDBItemException = DynamoDBItemException ItemError deriving (Show, Typeable)
+
+instance Exception DynamoDBItemException where
+  toException = toException . DynamoDBException
+  fromException x = do
+    DynamoDBException e <- fromException x
+    cast e
+
+sendDynamoDB
+  :: (MonadUnliftIO m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, rs ~ AWSResponse rq)
+  => rq -> m rs
+sendDynamoDB = throwOnHttpStatusError DynamoDBHttpStatusException <=< sendAWS
+
+-- | A helper function to perform a `GetItem` request.
+getItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => GetItem -> m (Maybe i) 
+getItem' gi = do
+  res <- sendDynamoDB gi 
+  case res^.(field @"item") of
+    Just item -> case fromItem item of
+      Left e -> throwM $ DynamoDBItemException e 
+      Right i -> return $ Just i
+    Nothing -> return Nothing 
+
+-- | A helper function to perform a `GetItem` request with a key and deserialize the result into a Haskell type.
+getItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Text -> TableItem -> m (Maybe i) 
+getItem table key = getItem' $ newGetItem table & (field @"key") .~ key
+
+-- | A helper function to perform a `Scan` request and deserialize the results into Haskell types.
+scan' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Scan -> m [i]
+scan' s = do
+  res <- sendDynamoDB s 
+  case res^.(field @"items") of
+    Just items -> do
+      -- A single bad record could spike our data, so we log it and move on. 
+      let (errors, items') = partitionEithers $ map fromItem items
+      forM_ errors $ logError . displayShow
+      return items'
+    Nothing -> return []
+
+-- | A helper function to perform a `Scan` request and deserialize the results into Haskell types.
+scan :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Text -> m [i]
+scan = scan' . newScan
+
+-- | A helper function to perform a simple `PutItem` request.
+--
+-- If you need more advanced capabilities such as conditions, don't use this. Just do the request directly.
+putItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, ToItem i, MonadThrow m) => Text -> i -> m () 
+putItem table item = void $ sendDynamoDB req 
+  where
+    req :: PutItem
+    req = newPutItem table & (field @"item") .~ toItem item
