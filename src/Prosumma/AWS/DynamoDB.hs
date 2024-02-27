@@ -15,6 +15,7 @@ module Prosumma.AWS.DynamoDB (
   TableItem,
   TableReadException(..),
   TableScanException(..),
+  ToAttributeValue(..),
   ToItem(..),
   (=:)
 ) where
