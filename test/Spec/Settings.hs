@@ -5,10 +5,8 @@ module Spec.Settings (testSettings) where
 import Amazonka.DynamoDB
 import Prosumma.AWS.DynamoDB
 import Prosumma.Settings
-import Prosumma.Util
 import RIO
 import Test.Hspec
-import Text.Printf
 
 import qualified RIO.HashMap as HM
 
@@ -20,14 +18,9 @@ data Settings = Settings {
   stgsWho  :: !Text
 } deriving (Eq, Show)
 
-readPersonSettings :: [HashMap Text AttributeValue] -> Either String Settings
-readPersonSettings = readSettings $ \lookup ->
-  Settings
-    <$> lookup "name"
-    <*> lookup "age"
-    <*> lookup "good"
-    <*> (lookup "wut" ??~ Nothing)
-    <*> (lookup "who" ??~ "Greg")
+instance FromItem Settings where
+  fromItem = readItem $ \read ->
+    Settings <$> read "name" <*> read "age" <*> read "good" <*> read "wut" <*> (read "who" <|> pure "Greg")
 
 newRow :: Text -> AttributeValue -> HashMap Text AttributeValue
 newRow key value = let attributeKey = S key in
@@ -45,7 +38,7 @@ testSettings = do
       let row3 = newRow "good" boolAttribute
       let rows = [row1, row2, row3]
       let expected = Settings "Vina" 22 False Nothing "Greg"
-      readPersonSettings rows `shouldBe` Right expected
+      fromItem (settings rows) `shouldBe` Right expected
     it "fails to initialize a record given invalid data" $ do
       let stringAttribute = S "Vina"
       let row1 = newRow "name" stringAttribute
@@ -53,4 +46,5 @@ testSettings = do
       let ageName = "age"
       let row2 = newRow ageName integerAttribute
       let rows = [row1, row2]
-      readPersonSettings rows `shouldBe` Left (printf readErrorIncorrectType ageName)
+      let setting :: Either ItemError Settings = fromItem $ settings rows
+      setting `shouldBe` Left (ItemInvalidFormat "age" (Just (S "Whatever")))

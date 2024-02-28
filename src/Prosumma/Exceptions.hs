@@ -2,6 +2,7 @@
 
 module Prosumma.Exceptions (
   HelpMatchException,
+  HTTPStatusException(..),
   MatchException,
   catchLog,
   catchMatch,
@@ -83,6 +84,9 @@ catchMatch match action = catchAny action $ throwMatch match
 -- > matchAll (ServerError 500) >=> defaultExceptions
 matchAll :: Exception e => e -> MatchException SomeException SomeException
 matchAll = const . throwError . toException
+
+newtype HTTPStatusException = HTTPStatusException Int deriving (Eq, Show, Typeable)
+instance Exception HTTPStatusException
 
 -- | Throws an exception if the HTTP Status falls outside the given range, otherwise returns its last argument.
 throwOnHttpStatusOutsideRange :: (MonadThrow m, Exception e, HasField "httpStatus" r r Int Int) => [Int] -> (Int -> e) -> r -> m r
