@@ -2,7 +2,7 @@
 
 module Prosumma.AWS (
   sendAWS,
-  sendAWSThrowHTTPStatus,
+  sendAWSThrowOnStatus,
   sendAWSThrowOnError,
   AWS(..),
   Env,
@@ -45,7 +45,7 @@ sendAWSThrowOnError
   => (Int -> e) -> rq -> m rs 
 sendAWSThrowOnError mkException = throwOnHttpStatusError mkException <=< sendAWS
 
-sendAWSThrowHTTPStatus
+sendAWSThrowOnStatus
   :: (MonadUnliftIO m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, rs ~ AWSResponse rq)
   => rq -> m rs 
-sendAWSThrowHTTPStatus = sendAWSThrowOnError HTTPStatusException
+sendAWSThrowOnStatus = sendAWSThrowOnError HTTPStatusException

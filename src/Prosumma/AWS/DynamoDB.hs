@@ -195,7 +195,7 @@ instance Exception DynamoDBItemException where
 -- | A helper function to perform a `GetItem` request.
 getItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => GetItem -> m (Maybe i)
 getItem' gi = do
-  res <- sendAWSThrowHTTPStatus gi
+  res <- sendAWSThrowOnStatus gi
   case res^.(field @"item") of
     Just item -> case fromItem item of
       Left e -> throwM $ DynamoDBItemException e
@@ -209,7 +209,7 @@ getItem table key = getItem' $ newGetItem table & (field @"key") .~ key
 -- | A helper function to perform a `Scan` request and deserialize the results into Haskell types.
 scan' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Scan -> m [i]
 scan' s = do
-  res <- sendAWSThrowHTTPStatus s
+  res <- sendAWSThrowOnStatus s
   case res^.(field @"items") of
     Just items -> do
       -- A single bad record could spike our data, so we log it and move on. 
@@ -226,14 +226,14 @@ scan = scan' . newScan
 --
 -- If you need more advanced capabilities such as conditions, don't use this. Just do the request directly.
 putItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, ToItem i, MonadThrow m) => Text -> i -> m ()
-putItem table item = void $ sendAWSThrowHTTPStatus req
+putItem table item = void $ sendAWSThrowOnStatus req
   where
     req :: PutItem
     req = newPutItem table & (field @"item") .~ toItem item
 
 query' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Query -> m [i]
 query' q = do
-  res <- sendAWSThrowHTTPStatus q
+  res <- sendAWSThrowOnStatus q
   let (errors, items') = partitionEithers $ map fromItem $ res^.(field @"items")
   -- A single bad record could spike our data, so we log it and move on. 
   forM_ errors $ logError . displayShow

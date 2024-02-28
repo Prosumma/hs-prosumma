@@ -55,7 +55,7 @@ instance Exception SettingsNotFoundException where
 
 scanSettings :: (HasAWSEnv env, MonadReader env m, MonadThrow m, MonadUnliftIO m, FromItem s) => Text -> m s 
 scanSettings table = do 
-  resp <- sendAWSThrowHTTPStatus $ newScan table
+  resp <- sendAWSThrowOnStatus $ newScan table
   case resp^.(field @"items") of
     Nothing -> throwM $ SettingsNotFoundException table 
     Just items -> do
