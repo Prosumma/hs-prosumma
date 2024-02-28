@@ -8,6 +8,7 @@ module Prosumma.AWS.DynamoDB (
   readItem,
   scan,
   scan',
+  writeItem,
   DynamoDBException(..),
   DynamoDBItemException(..),
   FromAttributeResult(..),
@@ -169,6 +170,13 @@ key =: value = (key, toAttributeValue value)
 
 class ToItem a where
   toItem :: a -> TableItem
+
+writeItem :: [(Text, AttributeValue)] -> TableItem
+writeItem = HashMap.filter isNotNull . HashMap.fromList 
+  where
+    isNotNull :: AttributeValue -> Bool
+    isNotNull NULL = False 
+    isNotNull _ = True 
 
 data DynamoDBException = forall e. Exception e => DynamoDBException e deriving Typeable
 instance Exception DynamoDBException

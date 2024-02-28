@@ -19,7 +19,7 @@ instance FromItem Watusi where
   fromItem = readItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz"
 
 instance ToItem Watusi where
-  toItem Watusi{..} = HM.fromList [
+  toItem Watusi{..} = writeItem [
       "foo" =: watusiFoo,
       "bar" =: watusiBar,
       "baz" =: watusiBaz
