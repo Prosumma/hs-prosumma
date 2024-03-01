@@ -8,6 +8,7 @@ module Prosumma.AWS.DynamoDB (
   readItem,
   scan,
   scan',
+  writeAttributeMap,
   writeItem,
   DynamoDBException(..),
   DynamoDBItemException(..),
@@ -33,6 +34,7 @@ import RIO
 
 import qualified Data.UUID as UUID
 import qualified RIO.HashMap as HashMap
+import qualified RIO.Map as Map
 import qualified RIO.Text as Text
 
 type TableItem = HashMap Text AttributeValue
@@ -163,6 +165,13 @@ instance ToAttributeValue a => ToAttributeValue (Maybe a) where
   toAttributeValue (Just a) = toAttributeValue a
   toAttributeValue Nothing = NULL
 
+isNotNull :: AttributeValue -> Bool
+isNotNull NULL = False 
+isNotNull _ = True 
+
+writeAttributeMap :: [(Text, AttributeValue)] -> AttributeValue 
+writeAttributeMap = M . Map.filter isNotNull . Map.fromList
+
 infixr 8 =:
 
 (=:) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
@@ -173,10 +182,6 @@ class ToItem a where
 
 writeItem :: [(Text, AttributeValue)] -> TableItem
 writeItem = HashMap.filter isNotNull . HashMap.fromList 
-  where
-    isNotNull :: AttributeValue -> Bool
-    isNotNull NULL = False 
-    isNotNull _ = True 
 
 data DynamoDBException = forall e. Exception e => DynamoDBException e deriving Typeable
 instance Exception DynamoDBException
