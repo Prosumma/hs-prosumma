@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           prosumma
-version:        1.1.2.0
+version:        1.1.3.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/prosumma#readme>
 homepage:       https://github.com/prosumma/prosumma#readme
 bug-reports:    https://github.com/prosumma/prosumma/issues
@@ -37,7 +37,6 @@ library
       Prosumma.PG.QueryRunner
       Prosumma.Push
       Prosumma.Servant
-      Prosumma.Settings
       Prosumma.Tagged
       Prosumma.Textual
       Prosumma.Types
@@ -178,7 +177,6 @@ test-suite library-test
       Spec.Crypto
       Spec.Exceptions
       Spec.Push
-      Spec.Settings
       Spec.Textual
       Spec.Types
       Spec.Util

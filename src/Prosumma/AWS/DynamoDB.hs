@@ -1,36 +1,36 @@
 {-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications #-}
 
 module Prosumma.AWS.DynamoDB (
+  AttributeItem,
+  FromAttributeValue(..),
+  FromTableItem(..),
+  TableItem,
+  ToTableItem(..),
+  ValueError(..),
   getItem,
   getItem',
   putItem,
-  query',
-  readItem,
+  putItem',
+  readAttributeItem,
+  readTableItem,
   scan,
-  scan',
-  writeAttributeMap,
-  writeItem,
-  DynamoDBException(..),
-  DynamoDBItemException(..),
-  FromAttributeResult(..),
-  FromAttributeValue(..),
-  FromItem(..),
-  ItemError(..),
-  TableItem,
-  ToAttributeValue(..),
-  ToItem(..),
+  scanWithFilter,
+  writeAttributeItem,
+  writeTableItem,
   (=:)
 ) where
 
 import Amazonka hiding (query)
 import Amazonka.DynamoDB
 import Control.Applicative
+import Control.Monad.Error.Class
 import Data.Generics.Product
 import Data.Typeable (cast)
 import Data.UUID (UUID)
 import Prosumma.AWS
 import Prosumma.Textual
 import RIO
+import RIO.Partial (fromJust)
 
 import qualified Data.UUID as UUID
 import qualified RIO.HashMap as HashMap
@@ -38,104 +38,111 @@ import qualified RIO.Map as Map
 import qualified RIO.Text as Text
 
 type TableItem = HashMap Text AttributeValue
+type AttributeItem = Map Text AttributeValue
 
-data FromAttributeResult a = Success a | MissingValue | InvalidFormat deriving (Eq, Show)
+logSource :: LogSource
+logSource = "DynamoDB"
 
-maybeToAttributeResult :: Maybe a -> FromAttributeResult a
-maybeToAttributeResult (Just a) = Success a
-maybeToAttributeResult Nothing = InvalidFormat
+data DynamoDBException = forall e. Exception e => DynamoDBException e deriving Typeable
+instance Exception DynamoDBException
 
-instance Functor FromAttributeResult where
-  fmap f (Success a) = Success $ f a
-  fmap _ MissingValue = MissingValue
-  fmap _ InvalidFormat = InvalidFormat
+instance Show DynamoDBException where
+  show (DynamoDBException e) = "DynamoDBException (" ++ show e ++ ")"
 
-instance Applicative FromAttributeResult where
-  pure = Success
-  (Success f) <*> (Success a) = Success $ f a
-  MissingValue <*> _ = MissingValue
-  InvalidFormat <*> _ = InvalidFormat
-  _ <*> MissingValue = MissingValue
-  _ <*> InvalidFormat = InvalidFormat
+data ValueError = ValueMissing (Maybe Text) | ValueInvalid (Maybe Text) AttributeValue (Maybe ValueError) deriving (Eq, Show)
 
-instance Monad FromAttributeResult where
-  return = pure
-  (Success a) >>= f = f a
-  MissingValue >>= _ = MissingValue
-  InvalidFormat >>= _ = InvalidFormat
+instance Exception ValueError where
+  toException = toException . DynamoDBException 
+  fromException e = do
+    DynamoDBException e' <- fromException e
+    cast e'
+
+instance Alternative (Either ValueError) where
+  empty = Left (ValueMissing Nothing)
+  Left _ <|> Right b = Right b
+  a      <|> _ = a
 
 class FromAttributeValue a where
-  fromAttributeValue :: Maybe AttributeValue -> FromAttributeResult a
+  fromAttributeValue :: Maybe AttributeValue -> Either ValueError a
 
 instance FromAttributeValue Text where
-  fromAttributeValue (Just (S text)) = Success text
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
+  fromAttributeValue (Just (S text)) = return text
+  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
+  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
 
 instance FromAttributeValue String where
-  fromAttributeValue a = Text.unpack <$> fromAttributeValue a
-
-instance FromAttributeValue Bool where
-  fromAttributeValue (Just (BOOL b)) = Success b
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
-
-instance FromAttributeValue Int where
-  fromAttributeValue (Just (N text)) = maybeToAttributeResult $ fromText text
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
-
-instance FromAttributeValue Integer where
-  fromAttributeValue (Just (N text)) = maybeToAttributeResult $ fromText text
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
-
-instance FromAttributeValue UUID where
-  fromAttributeValue (Just (S uuid)) = maybeToAttributeResult $ UUID.fromText uuid
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
+  fromAttributeValue value = Text.unpack <$> fromAttributeValue value
 
 instance FromAttributeValue ByteString where
-  fromAttributeValue (Just (B (Base64 b))) = Success b
-  fromAttributeValue Nothing = MissingValue
-  fromAttributeValue _ = InvalidFormat
+  fromAttributeValue (Just (B (Base64 b))) = return b
+  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
+  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+
+instance FromAttributeValue Int where
+  fromAttributeValue (Just (N int)) = case fromText int of
+    Just i -> return i
+    Nothing -> throwError $ ValueInvalid Nothing (N int) Nothing
+  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
+  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+
+instance FromAttributeValue Integer where 
+  fromAttributeValue (Just (N int)) = case fromText int of
+    Just i -> return i
+    Nothing -> throwError $ ValueInvalid Nothing (N int) Nothing
+  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
+  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+
+instance FromAttributeValue UUID where
+  fromAttributeValue (Just (S text)) = case UUID.fromText text of
+    Just uuid -> return uuid
+    Nothing -> throwError $ ValueInvalid Nothing (S text) Nothing
+  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
+  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
 
 instance FromAttributeValue a => FromAttributeValue (Maybe a) where
-  fromAttributeValue (Just NULL) = Success Nothing
-  fromAttributeValue Nothing = Success Nothing
-  fromAttributeValue a = case fromAttributeValue a of
-    Success a -> Success (Just a)
-    MissingValue -> Success Nothing
-    InvalidFormat -> InvalidFormat
+  fromAttributeValue (Just NULL) = return Nothing 
+  fromAttributeValue Nothing = return Nothing
+  fromAttributeValue attr = Just <$> fromAttributeValue attr 
 
-data ItemError = ItemEmptyError | ItemMissingValue Text | ItemInvalidFormat Text (Maybe AttributeValue) deriving (Eq, Show, Typeable)
-instance Exception ItemError
+class FromTableItem a where
+  fromTableItem :: TableItem -> Either ValueError a
 
-instance Semigroup ItemError where
-  ItemEmptyError <> e = e
-  e <> _ = e
-
-instance Monoid ItemError where
-  mempty = ItemEmptyError
-
-instance Alternative (Either ItemError) where
-  empty = Left mempty 
-  Left _ <|> a = a
-  a <|> _ = a
-
-class FromItem a where
-  fromItem :: TableItem -> Either ItemError a
-
-lookupAttributeValue :: FromAttributeValue a => TableItem -> Text -> Either ItemError a
-lookupAttributeValue item key = case fromAttributeValue value of
-  Success a -> return a
-  InvalidFormat -> Left $ ItemInvalidFormat key value
-  MissingValue -> Left $ ItemMissingValue key
+readAttributeValue :: FromAttributeValue a => (Text -> i -> Maybe AttributeValue) -> i -> Text -> Either ValueError a
+readAttributeValue lookup item key = case fromAttributeValue value of 
+  Left (ValueMissing _) -> Left (ValueMissing (Just key))
+  Left (ValueInvalid Nothing errorValue e) -> Left (ValueInvalid (Just key) errorValue e)
+  Left e -> Left (ValueInvalid (Just key) (fromJust value) (Just e)) 
+  Right a -> return a
   where
-    value = HashMap.lookup key item
+    value = lookup key item
 
-readItem :: ((forall v. FromAttributeValue v => Text -> Either ItemError v) -> Either ItemError a) -> TableItem -> Either ItemError a
-readItem read item = read $ lookupAttributeValue item
+readTableItemAttributeValue :: FromAttributeValue a => TableItem -> Text -> Either ValueError a
+readTableItemAttributeValue = readAttributeValue HashMap.lookup
+
+-- | Used to construct a type from a @TableItem@. This is best used to implement @FromTableItem@, e.g.,
+--
+-- > data User = User !Text !Int
+-- > instance FromTableItem User where 
+-- >   fromTableItem = readTableItem $ \read -> User <$> read "name" <*> read "age"
+readTableItem :: ((forall v. FromAttributeValue v => Text -> Either ValueError v) -> Either ValueError a) -> TableItem -> Either ValueError a
+readTableItem read item = read $ readTableItemAttributeValue item
+
+readAttributeItemAttributeValue :: FromAttributeValue a => AttributeItem -> Text -> Either ValueError a
+readAttributeItemAttributeValue = readAttributeValue Map.lookup 
+
+-- | Used to read a type from an @AttributeValue@ of type @M@. This is best used to implement @FromAttributeValue@ for a complex type.
+--
+-- > data User = User !Text !Int
+-- > instance FromAttributeValue User where
+-- >   fromAttributeValue = readAttributeItem $ \read -> User <$> read "name" <*> read "age"
+--
+-- This is used for nested complex types.
+readAttributeItem :: ((forall v. FromAttributeValue v => Text -> Either ValueError v) -> Either ValueError a) -> Maybe AttributeValue -> Either ValueError a
+readAttributeItem read (Just (M item)) = case read $ readAttributeItemAttributeValue item of
+  Left e -> throwError $ ValueInvalid Nothing (M item) (Just e) 
+  Right a -> return a
+readAttributeItem _ Nothing = throwError $ ValueMissing Nothing
+readAttributeItem _ (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
 
 class ToAttributeValue a where
   toAttributeValue :: a -> AttributeValue
@@ -146,8 +153,8 @@ instance ToAttributeValue Text where
 instance ToAttributeValue String where
   toAttributeValue = S . Text.pack
 
-instance ToAttributeValue Bool where
-  toAttributeValue = BOOL
+instance ToAttributeValue ByteString where
+  toAttributeValue = B . Base64
 
 instance ToAttributeValue Int where
   toAttributeValue = N . Text.pack . show
@@ -156,90 +163,79 @@ instance ToAttributeValue Integer where
   toAttributeValue = N . Text.pack . show
 
 instance ToAttributeValue UUID where
-  toAttributeValue = S . Text.toLower . UUID.toText
-
-instance ToAttributeValue ByteString where
-  toAttributeValue = B . Base64
+  toAttributeValue = S . UUID.toText
 
 instance ToAttributeValue a => ToAttributeValue (Maybe a) where
   toAttributeValue (Just a) = toAttributeValue a
   toAttributeValue Nothing = NULL
 
-isNotNull :: AttributeValue -> Bool
-isNotNull NULL = False 
-isNotNull _ = True 
+class ToTableItem a where
+  toTableItem :: a -> TableItem
 
-writeAttributeMap :: [(Text, AttributeValue)] -> AttributeValue 
-writeAttributeMap = M . Map.filter isNotNull . Map.fromList
+isNotNull :: AttributeValue -> Bool
+isNotNull NULL = False
+isNotNull _ = True
+
+-- | Used to write a type into a @TableItem@. Best used to implement @ToTableItem@.
+--
+-- > data User = User !Text !Int
+-- > instance ToTableItem User where
+-- >   toTableItem (User name age) = writeTableItem [ "name" =: name, "age" =: age ]
+writeTableItem :: [(Text, AttributeValue)] -> TableItem 
+writeTableItem = HashMap.filter isNotNull . HashMap.fromList
+
+-- | Used to write a type into an @AttributeValue@ of type @M@ (Map).
+-- Best used to implement @ToAttributeValue@ for a complex type.
+-- See also @=:@.
+--
+-- > data User = User !Text !Int
+-- > instance ToAttributeValue User where
+-- >  toAttributeValue (User name age) = writeAttributeItem [ "name" =: name, "age" =: age ]
+writeAttributeItem :: [(Text, AttributeValue)] -> AttributeValue 
+writeAttributeItem = M . Map.filter isNotNull . Map.fromList
 
 infixr 8 =:
 
+-- | A helper to create a pair of key and @AttributeValue@.
+--
+-- `"x" =: 3` results in `("x", N "3")`.
 (=:) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
 key =: value = (key, toAttributeValue value)
 
-class ToItem a where
-  toItem :: a -> TableItem
+putItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m ()
+putItem' table item = do
+  let request = newPutItem table & (field @"item") .~ item
+  void $ sendAWSThrowOnStatus request
 
-writeItem :: [(Text, AttributeValue)] -> TableItem
-writeItem = HashMap.filter isNotNull . HashMap.fromList 
+putItem :: (ToTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> a -> m ()
+putItem table = putItem' table . toTableItem
 
-data DynamoDBException = forall e. Exception e => DynamoDBException e deriving Typeable
-instance Exception DynamoDBException
-
-instance Show DynamoDBException where
-  show (DynamoDBException e) = show e
-
-newtype DynamoDBItemException = DynamoDBItemException ItemError deriving (Show, Typeable)
-
-instance Exception DynamoDBItemException where
-  toException = toException . DynamoDBException
-  fromException x = do
-    DynamoDBException e <- fromException x
-    cast e
-
--- | A helper function to perform a `GetItem` request.
-getItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => GetItem -> m (Maybe i)
-getItem' gi = do
-  res <- sendAWSThrowOnStatus gi
-  case res^.(field @"item") of
-    Just item -> case fromItem item of
-      Left e -> throwM $ DynamoDBItemException e
-      Right i -> return $ Just i
+getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m (Maybe a) 
+getItem' table item = do
+  let request = newGetItem table & (field @"key") .~ item  
+  response <- sendAWSThrowOnStatus request
+  case fromTableItem <$> response^.(field @"item") of
+    Just (Right a) -> return $ Just a
     Nothing -> return Nothing
+    Just (Left e) -> throwM e
 
--- | A helper function to perform a `GetItem` request with a key and deserialize the result into a Haskell type.
-getItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Text -> TableItem -> m (Maybe i)
-getItem table key = getItem' $ newGetItem table & (field @"key") .~ key
+getItem 
+  :: (ToTableItem k, FromTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m)
+  => Text -> k -> m (Maybe a) 
+getItem table = getItem' table . toTableItem
 
--- | A helper function to perform a `Scan` request and deserialize the results into Haskell types.
-scan' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Scan -> m [i]
-scan' s = do
-  res <- sendAWSThrowOnStatus s
-  case res^.(field @"items") of
-    Just items -> do
-      -- A single bad record could spike our data, so we log it and move on. 
-      let (errors, items') = partitionEithers $ map fromItem items
-      forM_ errors $ logError . displayShow
-      return items'
-    Nothing -> return []
+scanWithFilter
+  :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m)
+  => Text -> Maybe Text -> m [a]
+scanWithFilter table filter = do
+  let request = newScan table & (field @"filterExpression") .~ filter
+  response <- sendAWSThrowOnStatus request
+  case partitionEithers . map fromTableItem <$> response^.(field @"items") of
+    Just (errors, items) -> do
+      forM_ errors (logErrorS logSource . displayShow)
+      return items
+    Nothing -> return [] 
 
--- | A helper function to perform a `Scan` request and deserialize the results into Haskell types.
-scan :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Text -> m [i]
-scan = scan' . newScan
+scan :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> m [a]
+scan table = scanWithFilter table Nothing
 
--- | A helper function to perform a simple `PutItem` request.
---
--- If you need more advanced capabilities such as conditions, don't use this. Just do the request directly.
-putItem :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, ToItem i, MonadThrow m) => Text -> i -> m ()
-putItem table item = void $ sendAWSThrowOnStatus req
-  where
-    req :: PutItem
-    req = newPutItem table & (field @"item") .~ toItem item
-
-query' :: (HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, FromItem i, MonadThrow m) => Query -> m [i]
-query' q = do
-  res <- sendAWSThrowOnStatus q
-  let (errors, items') = partitionEithers $ map fromItem $ res^.(field @"items")
-  -- A single bad record could spike our data, so we log it and move on. 
-  forM_ errors $ logError . displayShow
-  return items'

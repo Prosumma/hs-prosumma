@@ -6,7 +6,6 @@ import Spec.Cache
 import Spec.Crypto
 import Spec.Exceptions
 import Spec.Push
-import Spec.Settings
 import Spec.Textual
 import Spec.Types
 import Spec.Util
@@ -23,4 +22,3 @@ main = hspec $ do
   testTextual
   testTypes
   testUtil
-  testSettings

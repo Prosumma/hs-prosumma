@@ -15,11 +15,11 @@ data Watusi = Watusi {
   watusiBaz :: !(Maybe Text)
 } deriving (Eq, Show)
 
-instance FromItem Watusi where
-  fromItem = readItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz"
+instance FromTableItem Watusi where
+  fromTableItem = readTableItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz"
 
-instance ToItem Watusi where
-  toItem Watusi{..} = writeItem [
+instance ToTableItem Watusi where
+  toTableItem Watusi{..} = writeTableItem [
       "foo" =: watusiFoo,
       "bar" =: watusiBar,
       "baz" =: watusiBaz
@@ -30,14 +30,14 @@ testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
       let watusi = Watusi "cool" 35 (Just "baz")
-      let item = toItem watusi 
-      let result = fromItem item
+      let item = toTableItem watusi 
+      let result = fromTableItem item
       result `shouldBe` Right watusi 
     it "gives an error if a key is not found" $ do
       let item = HM.empty 
-      let result :: Either ItemError Watusi = fromItem item
-      result `shouldBe` Left (ItemMissingValue "foo")
+      let result :: Either ValueError Watusi = fromTableItem item
+      result `shouldBe` Left (ValueMissing (Just "foo"))
     it "gives an error if a key is found but is not the correct type" $ do
       let item = HM.fromList [("foo", BOOL False)]
-      let result :: Either ItemError Watusi = fromItem item
-      result `shouldBe` Left (ItemInvalidFormat "foo" (Just (BOOL False))) 
+      let result :: Either ValueError Watusi = fromTableItem item
+      result `shouldBe` Left (ValueInvalid (Just "foo") (BOOL False) Nothing) 
