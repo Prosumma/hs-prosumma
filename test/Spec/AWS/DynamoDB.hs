@@ -12,24 +12,26 @@ import qualified RIO.HashMap as HM
 data Watusi = Watusi {
   watusiFoo :: !Text,
   watusiBar :: !Int,
-  watusiBaz :: !(Maybe Text)
+  watusiBaz :: !(Maybe Text),
+  watusiBiz :: !(Maybe [Text])
 } deriving (Eq, Show)
 
 instance FromTableItem Watusi where
-  fromTableItem = readTableItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz"
+  fromTableItem = readTableItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz" <*> read "biz"
 
 instance ToTableItem Watusi where
   toTableItem Watusi{..} = writeTableItem [
       "foo" =: watusiFoo,
       "bar" =: watusiBar,
-      "baz" =: watusiBaz
+      "baz" =: watusiBaz,
+      "biz" =: watusiBiz
     ]
 
 testDynamoDB :: Spec
 testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
-      let watusi = Watusi "cool" 35 (Just "baz")
+      let watusi = Watusi "cool" 35 (Just "baz") (Just ["a"])
       let item = toTableItem watusi 
       let result = fromTableItem item
       result `shouldBe` Right watusi 

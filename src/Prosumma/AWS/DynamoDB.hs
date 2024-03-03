@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications #-}
+{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances #-}
 
 module Prosumma.AWS.DynamoDB (
   AttributeItem,
@@ -25,6 +25,7 @@ import Amazonka.DynamoDB
 import Control.Applicative
 import Control.Monad.Error.Class
 import Data.Generics.Product
+import Data.Either.Extra
 import Data.Typeable (cast)
 import Data.UUID (UUID)
 import Prosumma.AWS
@@ -35,7 +36,9 @@ import RIO.Partial (fromJust)
 import qualified Data.UUID as UUID
 import qualified RIO.HashMap as HashMap
 import qualified RIO.Map as Map
+import qualified RIO.Set as Set
 import qualified RIO.Text as Text
+import qualified RIO.Vector as Vector
 
 type TableItem = HashMap Text AttributeValue
 type AttributeItem = Map Text AttributeValue
@@ -51,6 +54,12 @@ instance Show DynamoDBException where
 
 data ValueError = ValueMissing (Maybe Text) | ValueInvalid (Maybe Text) AttributeValue (Maybe ValueError) deriving (Eq, Show)
 
+valueInvalid :: AttributeValue -> ValueError
+valueInvalid attr = ValueInvalid Nothing attr Nothing
+
+valueMissing :: ValueError
+valueMissing = ValueMissing Nothing
+
 instance Exception ValueError where
   toException = toException . DynamoDBException 
   fromException e = do
@@ -62,42 +71,140 @@ instance Alternative (Either ValueError) where
   Left _ <|> Right b = Right b
   a      <|> _ = a
 
+data AttributeKind = KindS | KindN | KindB
+
+type family AttributeConstructorType (kind :: AttributeKind) where
+  AttributeConstructorType 'KindS = Text
+  AttributeConstructorType 'KindN = Text
+  AttributeConstructorType 'KindB = Base64
+
+type family TypeAttributeKind a :: AttributeKind 
+type instance TypeAttributeKind Text = 'KindS
+type instance TypeAttributeKind String = 'KindS
+type instance TypeAttributeKind UUID = 'KindS
+type instance TypeAttributeKind Int = 'KindN
+type instance TypeAttributeKind Integer = 'KindN
+type instance TypeAttributeKind ByteString = 'KindB
+
+class FromAttributeConstructorType a where
+  fromAttributeConstructorType :: AttributeConstructorType (TypeAttributeKind a) -> Maybe a
+
+instance FromAttributeConstructorType Text where
+  fromAttributeConstructorType = Just
+
+instance FromAttributeConstructorType String where
+  fromAttributeConstructorType = Just . Text.unpack
+
+instance FromAttributeConstructorType UUID where
+  fromAttributeConstructorType = UUID.fromText
+
+instance FromAttributeConstructorType Int where
+  fromAttributeConstructorType = fromText
+
+instance FromAttributeConstructorType Integer where
+  fromAttributeConstructorType = fromText
+
+instance FromAttributeConstructorType ByteString where
+  fromAttributeConstructorType = Just . unBase64
+
+class FromScalarAttributeConstructor (kind :: AttributeKind) where
+  fromScalarAttributeConstructor :: Proxy kind -> AttributeValue -> Either ValueError (AttributeConstructorType kind)
+
+instance FromScalarAttributeConstructor 'KindS where
+  fromScalarAttributeConstructor _ (S text) = return text
+  fromScalarAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+instance FromScalarAttributeConstructor 'KindN where
+  fromScalarAttributeConstructor _ (N text) = return text
+  fromScalarAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+instance FromScalarAttributeConstructor 'KindB where
+  fromScalarAttributeConstructor _ (B base64) = return base64 
+  fromScalarAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+class FromVectorAttributeConstructor (kind :: AttributeKind) where
+  fromVectorAttributeConstructor :: Proxy kind -> AttributeValue -> Either ValueError (Vector (AttributeConstructorType kind))
+
+instance FromVectorAttributeConstructor 'KindS where
+  fromVectorAttributeConstructor _ (SS vector) = return vector
+  fromVectorAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+instance FromVectorAttributeConstructor 'KindN where
+  fromVectorAttributeConstructor _ (NS vector) = return vector
+  fromVectorAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+instance FromVectorAttributeConstructor 'KindB where
+  fromVectorAttributeConstructor _ (BS vector) = return vector
+  fromVectorAttributeConstructor _ attr = throwError $ valueInvalid attr
+
+class (FromAttributeConstructorType a, FromScalarAttributeConstructor (TypeAttributeKind a)) => FromScalarAttributeValue a where
+  fromScalarAttributeValue :: Maybe AttributeValue -> Either ValueError a
+  fromScalarAttributeValue (Just attr) = do
+    let proxy = Proxy :: Proxy (TypeAttributeKind a) 
+    value <- fromScalarAttributeConstructor proxy attr
+    maybeToEither (valueInvalid attr) $ fromAttributeConstructorType value
+  fromScalarAttributeValue Nothing = throwError valueMissing
+
+instance FromScalarAttributeValue Text
+instance FromScalarAttributeValue String
+instance FromScalarAttributeValue UUID
+instance FromScalarAttributeValue Int
+instance FromScalarAttributeValue Integer
+instance FromScalarAttributeValue ByteString
+
+class Monoid c => FromVector e c | c -> e where
+  fromVector :: Vector e -> c
+
+instance FromVector a (Vector a) where
+  fromVector = id
+
+instance FromVector a [a] where
+  fromVector = toList
+
+instance Ord a => FromVector a (Set a) where
+  fromVector = Set.fromList . toList
+
+class (FromAttributeConstructorType e, FromVectorAttributeConstructor (TypeAttributeKind e), FromVector e a) => FromVectorAttributeValue e a | a -> e where
+  fromVectorAttributeValue :: Maybe AttributeValue -> Either ValueError a
+  fromVectorAttributeValue (Just attr) = do
+    let proxy = Proxy :: Proxy (TypeAttributeKind e) 
+    vector <- fromVectorAttributeConstructor proxy attr
+    maybeToEither (valueInvalid attr) $ fromVector <$> Vector.mapM fromAttributeConstructorType vector
+  fromVectorAttributeValue Nothing = return mempty
+
+instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromVectorAttributeValue a [a]
+instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromVectorAttributeValue a (Vector a) 
+instance (Ord a, FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromVectorAttributeValue a (Set a) 
+
 class FromAttributeValue a where
   fromAttributeValue :: Maybe AttributeValue -> Either ValueError a
 
+instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromAttributeValue [a] where
+  fromAttributeValue = fromVectorAttributeValue
+
+instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromAttributeValue (Vector a) where
+  fromAttributeValue = fromVectorAttributeValue
+
+instance (Ord a, FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeKind a)) => FromAttributeValue (Set a) where
+  fromAttributeValue = fromVectorAttributeValue
+
 instance FromAttributeValue Text where
-  fromAttributeValue (Just (S text)) = return text
-  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
-  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+  fromAttributeValue = fromScalarAttributeValue 
 
 instance FromAttributeValue String where
-  fromAttributeValue value = Text.unpack <$> fromAttributeValue value
-
-instance FromAttributeValue ByteString where
-  fromAttributeValue (Just (B (Base64 b))) = return b
-  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
-  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
-
-instance FromAttributeValue Int where
-  fromAttributeValue (Just (N int)) = case fromText int of
-    Just i -> return i
-    Nothing -> throwError $ ValueInvalid Nothing (N int) Nothing
-  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
-  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
-
-instance FromAttributeValue Integer where 
-  fromAttributeValue (Just (N int)) = case fromText int of
-    Just i -> return i
-    Nothing -> throwError $ ValueInvalid Nothing (N int) Nothing
-  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
-  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+  fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue UUID where
-  fromAttributeValue (Just (S text)) = case UUID.fromText text of
-    Just uuid -> return uuid
-    Nothing -> throwError $ ValueInvalid Nothing (S text) Nothing
-  fromAttributeValue Nothing = throwError $ ValueMissing Nothing
-  fromAttributeValue (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
+  fromAttributeValue = fromScalarAttributeValue
+
+instance FromAttributeValue ByteString where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance FromAttributeValue Int where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance FromAttributeValue Integer where 
+  fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue a => FromAttributeValue (Maybe a) where
   fromAttributeValue (Just NULL) = return Nothing 
@@ -144,8 +251,70 @@ readAttributeItem read (Just (M item)) = case read $ readAttributeItemAttributeV
 readAttributeItem _ Nothing = throwError $ ValueMissing Nothing
 readAttributeItem _ (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
 
+class ToAttributeConstructorType a where
+  toAttributeConstructorType :: a -> AttributeConstructorType (TypeAttributeKind a)
+
+instance ToAttributeConstructorType Text where
+  toAttributeConstructorType = id 
+
+instance ToAttributeConstructorType String where
+  toAttributeConstructorType = Text.pack
+
+instance ToAttributeConstructorType UUID where
+  toAttributeConstructorType = UUID.toText
+
+instance ToAttributeConstructorType Int where
+  toAttributeConstructorType = toText 
+
+instance ToAttributeConstructorType Integer where
+  toAttributeConstructorType = toText 
+
+instance ToAttributeConstructorType ByteString where
+  toAttributeConstructorType = Base64
+
+class ToVectorAttributeConstructor (kind :: AttributeKind) where
+  toVectorAttributeConstructor :: Proxy kind -> Vector (AttributeConstructorType kind) -> AttributeValue
+
+instance ToVectorAttributeConstructor 'KindS where
+  toVectorAttributeConstructor _ = SS
+
+instance ToVectorAttributeConstructor 'KindN where
+  toVectorAttributeConstructor _ = NS
+
+instance ToVectorAttributeConstructor 'KindB where
+  toVectorAttributeConstructor _ = BS
+
+class ToVector e c | c -> e where
+  toVector :: c -> Vector e 
+
+instance ToVector a (Vector a) where
+  toVector = id
+
+instance ToVector a [a] where
+  toVector = Vector.fromList
+
+instance ToVector a (Set a) where
+  toVector = Vector.fromList . toList
+
+class (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e), ToVector e a) => ToVectorAttributeValue e a | a -> e where
+  toVectorAttributeValue :: a -> AttributeValue
+  toVectorAttributeValue = toVectorAttributeConstructor (Proxy :: Proxy (TypeAttributeKind e)) . Vector.map toAttributeConstructorType . toVector
+
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToVectorAttributeValue e (Vector e) 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToVectorAttributeValue e [e]
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToVectorAttributeValue e (Set e) 
+
 class ToAttributeValue a where
   toAttributeValue :: a -> AttributeValue
+
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToAttributeValue (Vector e) where 
+  toAttributeValue = toVectorAttributeValue
+
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToAttributeValue [e] where 
+  toAttributeValue = toVectorAttributeValue
+
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeKind e)) => ToAttributeValue (Set e) where 
+  toAttributeValue = toVectorAttributeValue
 
 instance ToAttributeValue Text where
   toAttributeValue = S
