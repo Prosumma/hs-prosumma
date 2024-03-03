@@ -5,6 +5,7 @@ module Prosumma.AWS.DynamoDB (
   FromAttributeValue(..),
   FromTableItem(..),
   TableItem,
+  ToAttributeValue(..),
   ToTableItem(..),
   ValueError(..),
   getItem,
