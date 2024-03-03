@@ -45,6 +45,10 @@ instance Textual Int where
   fromText = fromTextReader decimal 
   toText = pack . show
 
+instance Textual Double where
+  fromText = fromTextReader double 
+  toText = pack . show
+
 -- | Unsafely converts from `Text` to a `Textual`.
 --
 -- Causes a runtime error if conversion is invalid.

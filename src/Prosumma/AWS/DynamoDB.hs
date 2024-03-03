@@ -29,6 +29,7 @@ module Prosumma.AWS.DynamoDB (
   readTableItem,
   scan,
   scanWithFilter,
+  utcTimeFormat,
   valueInvalid,
   valueMissing,
   writeAttributeItem,
@@ -53,6 +54,7 @@ import qualified Data.UUID as UUID
 import qualified RIO.HashMap as HashMap
 import qualified RIO.Map as Map
 import qualified RIO.Set as Set
+import qualified RIO.Time as Time
 import qualified RIO.Text as Text
 import qualified RIO.Vector as Vector
 
@@ -76,6 +78,9 @@ valueInvalid attr = ValueInvalid Nothing attr Nothing
 valueMissing :: ValueError
 valueMissing = ValueMissing Nothing
 
+utcTimeFormat :: String
+utcTimeFormat = "%Y-%m-%dT%H:%M:%S"
+
 instance Exception ValueError where
   toException = toException . DynamoDBException 
   fromException e = do
@@ -98,6 +103,7 @@ type family TypeAttributeKind a :: AttributeKind
 type instance TypeAttributeKind Text = 'KindS
 type instance TypeAttributeKind String = 'KindS
 type instance TypeAttributeKind UUID = 'KindS
+type instance TypeAttributeKind UTCTime = 'KindS
 type instance TypeAttributeKind Int = 'KindN
 type instance TypeAttributeKind Integer = 'KindN
 type instance TypeAttributeKind ByteString = 'KindB
@@ -113,6 +119,9 @@ instance FromAttributeConstructorType String where
 
 instance FromAttributeConstructorType UUID where
   fromAttributeConstructorType = UUID.fromText
+
+instance FromAttributeConstructorType UTCTime where
+  fromAttributeConstructorType = Time.parseTimeM True Time.defaultTimeLocale utcTimeFormat . Text.unpack
 
 instance FromAttributeConstructorType Int where
   fromAttributeConstructorType = fromText
@@ -164,6 +173,7 @@ class (FromAttributeConstructorType a, FromScalarAttributeConstructor (TypeAttri
 instance FromScalarAttributeValue Text
 instance FromScalarAttributeValue String
 instance FromScalarAttributeValue UUID
+instance FromScalarAttributeValue UTCTime
 instance FromScalarAttributeValue Int
 instance FromScalarAttributeValue Integer
 instance FromScalarAttributeValue ByteString
@@ -211,6 +221,9 @@ instance FromAttributeValue String where
   fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue UUID where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance FromAttributeValue UTCTime where
   fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue ByteString where
@@ -279,6 +292,9 @@ instance ToAttributeConstructorType String where
 instance ToAttributeConstructorType UUID where
   toAttributeConstructorType = UUID.toText
 
+instance ToAttributeConstructorType UTCTime where
+  toAttributeConstructorType = Text.pack . Time.formatTime Time.defaultTimeLocale utcTimeFormat
+
 instance ToAttributeConstructorType Int where
   toAttributeConstructorType = toText 
 
@@ -333,22 +349,25 @@ instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttrib
   toAttributeValue = toVectorAttributeValue
 
 instance ToAttributeValue Text where
-  toAttributeValue = S
+  toAttributeValue = S . toAttributeConstructorType
 
 instance ToAttributeValue String where
-  toAttributeValue = S . Text.pack
+  toAttributeValue = S . toAttributeConstructorType 
 
 instance ToAttributeValue ByteString where
-  toAttributeValue = B . Base64
+  toAttributeValue = B . toAttributeConstructorType 
 
 instance ToAttributeValue Int where
-  toAttributeValue = N . Text.pack . show
+  toAttributeValue = N . toAttributeConstructorType 
 
 instance ToAttributeValue Integer where
-  toAttributeValue = N . Text.pack . show
+  toAttributeValue = N . toAttributeConstructorType 
 
 instance ToAttributeValue UUID where
-  toAttributeValue = S . UUID.toText
+  toAttributeValue = S . toAttributeConstructorType 
+
+instance ToAttributeValue UTCTime where
+  toAttributeValue = S . toAttributeConstructorType
 
 instance ToAttributeValue a => ToAttributeValue (Maybe a) where
   toAttributeValue (Just a) = toAttributeValue a
