@@ -7,6 +7,7 @@ import Amazonka.DynamoDB
 import Prosumma.AWS.DynamoDB
 import RIO
 import RIO.Partial (fromJust)
+import RIO.Time (Day)
 import Test.Hspec
 
 import qualified RIO.HashMap as HM
@@ -26,11 +27,12 @@ data Watusi = Watusi {
   watusiBaz :: !(Maybe Text),
   watusiBiz :: !(Maybe [Text]),
   watusiSub :: !Sub,
-  watusiTim :: !UTCTime
+  watusiTim :: !UTCTime,
+  watusiDay :: !Day
 } deriving (Eq, Show)
 
 instance FromTableItem Watusi where
-  fromTableItem = readTableItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz" <*> read "biz" <*> read "sub" <*> read "tim"
+  fromTableItem = readTableItem $ \read -> Watusi <$> read "foo" <*> read "bar" <*> read "baz" <*> read "biz" <*> read "sub" <*> read "tim" <*> read "day"
 
 instance ToTableItem Watusi where
   toTableItem Watusi{..} = writeTableItem [
@@ -39,7 +41,8 @@ instance ToTableItem Watusi where
       "baz" =: watusiBaz,
       "biz" =: watusiBiz,
       "sub" =: watusiSub,
-      "tim" =: watusiTim
+      "tim" =: watusiTim,
+      "day" =: watusiDay
     ]
 
 getCurrentTimeRoundTripped :: MonadIO m => m UTCTime
@@ -50,7 +53,8 @@ testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
       time <- getCurrentTimeRoundTripped 
-      let watusi = Watusi "cool" 35 (Just "baz") (Just ["a", "b"]) (Sub 3) time
+      let day = Time.utctDay time
+      let watusi = Watusi "cool" 35 (Just "baz") (Just ["a", "b"]) (Sub 3) time day
       let item = toTableItem watusi
       let result = fromTableItem item
       result `shouldBe` Right watusi

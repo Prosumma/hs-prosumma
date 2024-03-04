@@ -48,6 +48,7 @@ import Data.UUID (UUID)
 import Prosumma.AWS
 import Prosumma.Textual
 import RIO
+import RIO.Time (Day)
 import RIO.Partial (fromJust)
 
 import qualified Data.UUID as UUID
@@ -81,6 +82,9 @@ valueMissing = ValueMissing Nothing
 utcTimeFormat :: String
 utcTimeFormat = "%Y-%m-%dT%H:%M:%S"
 
+dayTimeFormat :: String
+dayTimeFormat = "%Y-%m-%d"
+
 instance Exception ValueError where
   toException = toException . DynamoDBException 
   fromException e = do
@@ -104,6 +108,7 @@ type instance TypeAttributeKind Text = 'KindS
 type instance TypeAttributeKind String = 'KindS
 type instance TypeAttributeKind UUID = 'KindS
 type instance TypeAttributeKind UTCTime = 'KindS
+type instance TypeAttributeKind Day = 'KindS
 type instance TypeAttributeKind Int = 'KindN
 type instance TypeAttributeKind Integer = 'KindN
 type instance TypeAttributeKind ByteString = 'KindB
@@ -122,6 +127,9 @@ instance FromAttributeConstructorType UUID where
 
 instance FromAttributeConstructorType UTCTime where
   fromAttributeConstructorType = Time.parseTimeM True Time.defaultTimeLocale utcTimeFormat . Text.unpack
+
+instance FromAttributeConstructorType Day where
+  fromAttributeConstructorType = Time.parseTimeM True Time.defaultTimeLocale dayTimeFormat . Text.unpack
 
 instance FromAttributeConstructorType Int where
   fromAttributeConstructorType = fromText
@@ -174,6 +182,7 @@ instance FromScalarAttributeValue Text
 instance FromScalarAttributeValue String
 instance FromScalarAttributeValue UUID
 instance FromScalarAttributeValue UTCTime
+instance FromScalarAttributeValue Day
 instance FromScalarAttributeValue Int
 instance FromScalarAttributeValue Integer
 instance FromScalarAttributeValue ByteString
@@ -224,6 +233,9 @@ instance FromAttributeValue UUID where
   fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue UTCTime where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance FromAttributeValue Day where
   fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue ByteString where
@@ -294,6 +306,9 @@ instance ToAttributeConstructorType UUID where
 
 instance ToAttributeConstructorType UTCTime where
   toAttributeConstructorType = Text.pack . Time.formatTime Time.defaultTimeLocale utcTimeFormat
+
+instance ToAttributeConstructorType Day where
+  toAttributeConstructorType = Text.pack . Time.formatTime Time.defaultTimeLocale dayTimeFormat
 
 instance ToAttributeConstructorType Int where
   toAttributeConstructorType = toText 
@@ -367,6 +382,9 @@ instance ToAttributeValue UUID where
   toAttributeValue = S . toAttributeConstructorType 
 
 instance ToAttributeValue UTCTime where
+  toAttributeValue = S . toAttributeConstructorType
+
+instance ToAttributeValue Day where
   toAttributeValue = S . toAttributeConstructorType
 
 instance ToAttributeValue a => ToAttributeValue (Maybe a) where
