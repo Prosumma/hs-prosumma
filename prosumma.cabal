@@ -30,7 +30,6 @@ library
       Prosumma.AWS.DynamoDB
       Prosumma.Cache
       Prosumma.Crypto
-      Prosumma.Environment
       Prosumma.Exceptions
       Prosumma.Logging
       Prosumma.PG

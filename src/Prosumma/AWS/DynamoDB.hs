@@ -1,5 +1,38 @@
 {-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances #-}
 
+{-|
+Module: Prosumma.AWS.DynamoDB
+Description: Helpers and serialization for AWS DynamoDB using Amazonka 2.0.
+
+The simplest way to make a type serializable to an @AttributeValue@ is simply to conform directly
+to the `ToAttributeValue` protocol. However, if your attribute is of type `S`, `N`, or `B`, you can
+get automatic serialization to `SS`, `NS`, `BS` if you follow a slightly more complex path:
+
+> type instance TypeAttributeKind MyType = 'KindS -- This means it uses the S and SS constructors.
+> instance ToAttributeConstructorType MyType where
+>   toAttributeConstructorType = myTypeToText -- or whatever
+> instance ToScalarAttributeValue MyType -- no implementation necessary
+> instance ToAttributeValue MyType where
+>   toAttributeValue = toScalarAttributeValue
+
+A similar situation exists for deserialization:
+
+> type instance TypeAttributeKind MyType = 'KindS
+> instance FromAttributeConstructorType MyType where
+>   fromAttributeConstructorType myType = myTypeFromText -- or whatever
+> instance FromScalarAttributeValue MyType -- no implementation necessary
+> instance FromAttributeValue MyType where
+>   fromAttributeValue = fromScalarAttributeValue
+
+Implementing these conformances automatically gives you (de)serialization for `[MyType]`, `Set MyType` and `Vector MyType`.
+
+We could in theory say:
+
+> instance ToScalarAttributeValue a => ToAttributeValue a where
+>   toAttributeValue = toScalarAttributeValue
+
+But this causes problems with overlapping instances. A similar issue exists for @FromAttributeValue@.
+-}
 module Prosumma.AWS.DynamoDB (
   AttributeConstructorType,
   AttributeItem,
@@ -15,6 +48,7 @@ module Prosumma.AWS.DynamoDB (
   TableItem,
   ToAttributeConstructorType(..),
   ToAttributeValue(..),
+  ToScalarAttributeValue(..),
   ToTableItem(..),
   ToVector(..),
   ToVectorAttributeConstructor(..),
@@ -247,6 +281,10 @@ instance FromAttributeValue Int where
 instance FromAttributeValue Integer where 
   fromAttributeValue = fromScalarAttributeValue
 
+instance FromAttributeValue AttributeValue where
+  fromAttributeValue (Just attr) = return attr 
+  fromAttributeValue Nothing = throwError valueMissing
+
 instance FromAttributeValue a => FromAttributeValue (Maybe a) where
   fromAttributeValue (Just NULL) = return Nothing 
   fromAttributeValue Nothing = return Nothing
@@ -319,6 +357,31 @@ instance ToAttributeConstructorType Integer where
 instance ToAttributeConstructorType ByteString where
   toAttributeConstructorType = Base64
 
+class ToScalarAttributeConstructor (kind :: AttributeKind) where
+  toScalarAttributeConstructor :: Proxy kind -> AttributeConstructorType kind -> AttributeValue 
+
+instance ToScalarAttributeConstructor 'KindS where
+  toScalarAttributeConstructor _ = S
+
+instance ToScalarAttributeConstructor 'KindN where
+  toScalarAttributeConstructor _ = N
+
+instance ToScalarAttributeConstructor 'KindB where
+  toScalarAttributeConstructor _ = B
+
+class (ToAttributeConstructorType a, ToScalarAttributeConstructor (TypeAttributeKind a)) => ToScalarAttributeValue a where
+  toScalarAttributeValue :: a -> AttributeValue
+  toScalarAttributeValue = toScalarAttributeConstructor (Proxy :: Proxy (TypeAttributeKind a)) . toAttributeConstructorType
+
+instance ToScalarAttributeValue Text
+instance ToScalarAttributeValue String
+instance ToScalarAttributeValue ByteString
+instance ToScalarAttributeValue Int
+instance ToScalarAttributeValue Integer
+instance ToScalarAttributeValue UUID
+instance ToScalarAttributeValue UTCTime
+instance ToScalarAttributeValue Day
+
 class ToVectorAttributeConstructor (kind :: AttributeKind) where
   toVectorAttributeConstructor :: Proxy kind -> Vector (AttributeConstructorType kind) -> AttributeValue
 
@@ -364,28 +427,31 @@ instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttrib
   toAttributeValue = toVectorAttributeValue
 
 instance ToAttributeValue Text where
-  toAttributeValue = S . toAttributeConstructorType
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue String where
-  toAttributeValue = S . toAttributeConstructorType 
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue ByteString where
-  toAttributeValue = B . toAttributeConstructorType 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue Int where
-  toAttributeValue = N . toAttributeConstructorType 
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue Integer where
-  toAttributeValue = N . toAttributeConstructorType 
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue UUID where
-  toAttributeValue = S . toAttributeConstructorType 
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue UTCTime where
-  toAttributeValue = S . toAttributeConstructorType
+  toAttributeValue = toScalarAttributeValue 
 
 instance ToAttributeValue Day where
-  toAttributeValue = S . toAttributeConstructorType
+  toAttributeValue = toScalarAttributeValue 
+
+instance ToAttributeValue AttributeValue where
+  toAttributeValue = id
 
 instance ToAttributeValue a => ToAttributeValue (Maybe a) where
   toAttributeValue (Just a) = toAttributeValue a
@@ -460,4 +526,3 @@ scanWithFilter table filter = do
 
 scan :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> m [a]
 scan table = scanWithFilter table Nothing
-
