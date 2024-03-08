@@ -53,7 +53,7 @@ testDynamoDB = do
   describe "readTableItem" $ do
     it "reads a table item" $ do
       time <- getCurrentTimeRoundTripped 
-      let day = Time.utctDay time
+      let day = Time.fromGregorian 1973 02 30
       let watusi = Watusi "cool" 35 (Just "baz") (Just ["a", "b"]) (Sub 3) time day
       let item = toTableItem watusi
       let result = fromTableItem item
