@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, KindSignatures, PatternSynonyms, TemplateHaskell, NoGeneralisedNewtypeDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, PatternSynonyms, TemplateHaskell, TypeFamilies, NoGeneralisedNewtypeDeriving #-}
 
 module Prosumma.Types (
   AppName,
@@ -13,7 +13,7 @@ module Prosumma.Types (
   Region,
   ipFromSockAddr,
   language,
-  region, 
+  region,
   pattern IANATimeZone,
   pattern Language,
   pattern Name,
@@ -26,6 +26,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Net.Types
 import Network.Socket
+import Prosumma.AWS.DynamoDB
 import Prosumma.Textual
 import Prosumma.Util
 import RIO
@@ -62,19 +63,19 @@ instance Textual Language where
   toText (Language' language) = language
 
 instance IsString Language where
-  fromString = fromStringTextual "Language" 
+  fromString = fromStringTextual "Language"
 
 instance Default Language where
   def = "en"
 
 instance ToJSON Language where
-  toJSON = toJSON . toText 
+  toJSON = toJSON . toText
 
 instance FromJSON Language where
-  parseJSON = parseJSONTextual "Language" 
+  parseJSON = parseJSONTextual "Language"
 
 instance FromField Language where
-  fromField = fromFieldTextual "Language" 
+  fromField = fromFieldTextual "Language"
 
 instance ToField Language where
   toField = toFieldTextual
@@ -83,7 +84,7 @@ instance ToHttpApiData Language where
   toUrlPiece = toText
 
 instance FromHttpApiData Language where
-  parseUrlPiece = parseUrlPieceTextual "Language" 
+  parseUrlPiece = parseUrlPieceTextual "Language"
 
 newtype Region = Region' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
@@ -101,7 +102,7 @@ instance Textual Region where
   toText (Region' region) = region
 
 instance IsString Region where
-  fromString = fromStringTextual "Region" 
+  fromString = fromStringTextual "Region"
 
 instance ToJSON Region where
   toJSON = toJSON . toText
@@ -110,7 +111,7 @@ instance FromJSON Region where
   parseJSON = parseJSONTextual "Region"
 
 instance FromField Region where
-  fromField = fromFieldTextual "Region" 
+  fromField = fromFieldTextual "Region"
 
 instance ToField Region where
   toField = toFieldTextual
@@ -130,12 +131,12 @@ makeProsummaLenses ''Localization
 
 instance Show Localization where
   show (Localization language (Just region)) = printf "%s-%s" (show language) (show region)
-  show (Localization language Nothing) = show language 
+  show (Localization language Nothing) = show language
 
 instance Default Localization where
   def = Localization def Nothing
 
-localizationRegex :: Text 
+localizationRegex :: Text
 -- TDFA doesn't support non-capture groups
 localizationRegex = "^([a-z]{2})(-([A-Z]{2}))?$"
 
@@ -144,14 +145,14 @@ instance Textual Localization where
     where
       toLocalization' :: Maybe [[Text]] -> Maybe Localization
       toLocalization' (Just [[_match, language, "", ""]]) = Just $ Localization (Language' language) Nothing
-      toLocalization' (Just [[_match, language, _optional, region]]) = Just $ Localization (Language' language) (Just (Region' region)) 
-      toLocalization' _nomatch = Nothing 
-  toText (Localization (Language' language) (Just (Region' region))) = Text.concat [language, "-", region] 
+      toLocalization' (Just [[_match, language, _optional, region]]) = Just $ Localization (Language' language) (Just (Region' region))
+      toLocalization' _nomatch = Nothing
+  toText (Localization (Language' language) (Just (Region' region))) = Text.concat [language, "-", region]
   toText (Localization (Language' language) Nothing) = language
 
 instance IsString Localization where
-  fromString = fromStringTextual "Localization" 
-  
+  fromString = fromStringTextual "Localization"
+
 instance ToJSON Localization where
   toJSON = toJSON . toText
 
@@ -159,7 +160,7 @@ instance FromJSON Localization where
   parseJSON = parseJSONTextual "Localization"
 
 instance FromField Localization where
-  fromField = fromFieldTextual "Localization" 
+  fromField = fromFieldTextual "Localization"
 
 instance ToField Localization where
   toField = toFieldTextual
@@ -169,6 +170,24 @@ instance ToHttpApiData Localization where
 
 instance FromHttpApiData Localization where
   parseUrlPiece = parseUrlPieceTextual "Localization"
+
+type instance TypeAttributeConstructor Localization = 'ConstructorS
+
+instance FromAttributeConstructorType Localization where
+  fromAttributeConstructorType = fromText
+
+instance FromScalarAttributeValue Localization
+
+instance FromAttributeValue Localization where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance ToAttributeConstructorType Localization where
+  toAttributeConstructorType = toText
+
+instance ToScalarAttributeValue Localization
+
+instance ToAttributeValue Localization where
+  toAttributeValue = toScalarAttributeValue
 
 nameRegex :: Text
 nameRegex = "^[a-z][a-z0-9]*$"
@@ -186,7 +205,7 @@ instance Textual Name where
   toText (Name' name) = name
 
 instance IsString Name where
-  fromString = fromStringTextual "Name" 
+  fromString = fromStringTextual "Name"
 
 instance ToJSON Name where
   toJSON = toJSON . toText
@@ -195,7 +214,7 @@ instance FromJSON Name where
   parseJSON = parseJSONTextual "Name"
 
 instance FromField Name where
-  fromField = fromFieldTextual "Name" 
+  fromField = fromFieldTextual "Name"
 
 instance ToField Name where
   toField = toFieldTextual
@@ -205,6 +224,24 @@ instance ToHttpApiData Name where
 
 instance FromHttpApiData Name where
   parseUrlPiece = parseUrlPieceTextual "Name"
+
+type instance TypeAttributeConstructor Name = 'ConstructorS
+
+instance FromAttributeConstructorType Name where
+  fromAttributeConstructorType = fromText
+
+instance FromScalarAttributeValue Name
+
+instance FromAttributeValue Name where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance ToAttributeConstructorType Name where
+  toAttributeConstructorType = toText
+
+instance ToScalarAttributeValue Name
+
+instance ToAttributeValue Name where
+  toAttributeValue = toScalarAttributeValue
 
 type AppName = Name
 
@@ -218,7 +255,7 @@ instance Textual IP where
   toText = IP.encode
 
 instance FromField IP where
-  fromField = fromFieldTextual "IP" 
+  fromField = fromFieldTextual "IP"
 
 instance ToField IP where
   toField = toFieldTextual
@@ -279,7 +316,7 @@ instance IsString PushSystem where
   fromString = fromStringTextual "PushSystem"
 
 instance Textual PushSystem where
-  fromText = readMaybe . S.toString 
+  fromText = readMaybe . S.toString
   toText = S.toStrictText . show
 
 instance FromField PushSystem where
