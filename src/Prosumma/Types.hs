@@ -289,6 +289,24 @@ instance FromField IANATimeZone where
 instance ToField IANATimeZone where
   toField = toFieldTextual
 
+type instance TypeAttributeConstructor IANATimeZone = 'ConstructorS
+
+instance FromAttributeConstructorType IANATimeZone where
+  fromAttributeConstructorType = fromText
+
+instance FromScalarAttributeValue IANATimeZone
+
+instance FromAttributeValue IANATimeZone where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance ToAttributeConstructorType IANATimeZone where
+  toAttributeConstructorType = toText
+
+instance ToScalarAttributeValue IANATimeZone
+
+instance ToAttributeValue IANATimeZone where
+  toAttributeValue = toScalarAttributeValue
+
 data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
 instance Textual OS where
