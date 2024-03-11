@@ -1,9 +1,12 @@
+{-# LANGUAGE TupleSections #-}
+
 module Prosumma.Util (
   addL,
   addSuffix,
   also,
   coalesce,
   displayText,
+  extractKeys,
   fromTextReader,
   hush,
   makeProsummaLenses,
@@ -40,6 +43,7 @@ import RIO.Map (singleton)
 import qualified Data.Pool as Pool
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
+import qualified RIO.HashMap as HashMap
 
 infixr 2 ><
 
@@ -200,3 +204,8 @@ uformat m = runFormat m (display . T.toStrict . T.toLazyText)
 
 withResource :: MonadUnliftIO m => Pool a -> (a -> m b) -> m b
 withResource pool action = withRunInIO $ \runInIO -> Pool.withResource pool (runInIO . action)
+
+extractKeys :: Hashable k => Set k -> HashMap k v -> HashMap k v
+extractKeys keys hm = HashMap.fromList . mapMaybe extract $ toList keys
+  where
+    extract k = (k,) <$> HashMap.lookup k hm

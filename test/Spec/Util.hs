@@ -10,6 +10,8 @@ import RIO.Map (fromList)
 import Test.Hspec
 
 import qualified Formatting as F
+import qualified RIO.HashMap as HashMap
+import qualified RIO.Set as Set
 
 data Structure = Structure {
   strucText :: !Text,
@@ -63,3 +65,8 @@ testUtil = do
     it "formats a RIO Utf8Builder" $ do
       let u = uformat ("The value of " % F.text % " is " % F.int % ".") "three" 3
       utf8BuilderToText u `shouldBe` "The value of three is 3."
+  describe "extractKeys" $ do
+    it "extracts specific keys from a HashMap" $ do
+      let hm :: HashMap Text Text = HashMap.fromList ["foo" <-> "bar", "bar" <-> "baz", "biz" <-> "bee"]
+      let ex = extractKeys (Set.fromList ["foo", "bar"]) hm
+      ex `shouldBe` HashMap.fromList ["foo" <-> "bar", "bar" <-> "baz"]
