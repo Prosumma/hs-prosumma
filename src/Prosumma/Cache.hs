@@ -24,9 +24,12 @@ module Prosumma.Cache (
   cachePuts,
   clearCache,
   createCache,
+  hour,
+  minute,
   newCache,
   resultToFetchResult,
   resultToMaybe,
+  Prosumma.Cache.second,
   setCache,
   sizeCache,
   Cache,
@@ -46,6 +49,15 @@ import qualified RIO.HashMap as HM
 type FetchResult v = Either SomeException v
 type Fetch k v = k -> IO v
 type TTL = NominalDiffTime
+
+second :: Int
+second = 1
+
+minute :: Int
+minute = Prosumma.Cache.second * 60
+
+hour :: Int
+hour = minute * 60
 
 data Entry v = Entry {
   entryWhen :: !UTCTime,
