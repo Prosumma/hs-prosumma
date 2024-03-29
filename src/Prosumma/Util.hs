@@ -66,7 +66,10 @@ addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
     suffixFieldNamer :: String -> FieldNamer
     suffixFieldNamer suffix _ _ field = maybeToList $ do
       let fieldPart = nameBase field
-      let cls = "Has" ++ capitalize fieldPart
+      -- e.g., LensFooL if "L" is the suffix.
+      -- This helps disambiguate if DuplicateRecordFields is
+      -- also used in the same module.
+      let cls = "Lens" ++ capitalize fieldPart ++ suffix 
       return (MethodName (mkName cls) (mkName (fieldPart ++ suffix)))
     capitalize [] = []
     capitalize (c:cs) = toUpper c : cs

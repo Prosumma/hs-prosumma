@@ -37,12 +37,14 @@ module Prosumma.AWS.DynamoDB (
   AttributeConstructorType,
   AttributeItem,
   AttributeConstructor(..),
+  DynamoDBContext(..),
   FromAttributeConstructorType(..),
   FromAttributeValue(..),
   FromScalarAttributeValue(..),
   FromTableItem(..),
   FromVector(..),
   FromVectorAttributeValue(..),
+  HasDynamoDBTable(..),
   TableItem,
   ToAttributeConstructorType(..),
   ToAttributeValue(..),
@@ -89,6 +91,24 @@ import qualified RIO.Set as Set
 import qualified RIO.Time as Time
 import qualified RIO.Text as Text
 import qualified RIO.Vector as Vector
+
+data DynamoDBContext = DynamoDBContext {
+  env :: Env,
+  logFunc :: LogFunc,
+  table :: Text
+}
+
+class HasDynamoDBTable a where
+  getDynamoDBTable :: a -> Text
+
+instance HasAWSEnv DynamoDBContext where
+  getAWSEnv = env
+
+instance HasLogFunc DynamoDBContext where
+  logFuncL = lens logFunc $ \ctx logFunc -> ctx{logFunc}
+
+instance HasDynamoDBTable DynamoDBContext where
+  getDynamoDBTable = table
 
 type TableItem = HashMap Text AttributeValue
 type AttributeItem = Map Text AttributeValue

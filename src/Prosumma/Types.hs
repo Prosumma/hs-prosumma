@@ -3,6 +3,7 @@
 module Prosumma.Types (
   AppName,
   CRUDOperation(..),
+  DotName,
   IANATimeZone,
   IP,
   Language,
@@ -14,6 +15,7 @@ module Prosumma.Types (
   ipFromSockAddr,
   language,
   region,
+  pattern DotName,
   pattern IANATimeZone,
   pattern Language,
   pattern Name,
@@ -244,6 +246,60 @@ instance ToAttributeValue Name where
   toAttributeValue = toScalarAttributeValue
 
 type AppName = Name
+
+dotNameRegex :: Text
+dotNameRegex = "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*$"
+
+newtype DotName = DotName' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
+
+pattern DotName :: Text -> DotName
+pattern DotName name <- DotName' name
+
+instance Show DotName where
+  show = showTextual
+
+instance Textual DotName where
+  fromText = ifMatchTextual dotNameRegex DotName'
+  toText (DotName' name) = name
+
+instance IsString DotName where
+  fromString = fromStringTextual "DotName"
+
+instance ToJSON DotName where
+  toJSON = toJSON . toText
+
+instance FromJSON DotName where
+  parseJSON = parseJSONTextual "DotName"
+
+instance FromField DotName where
+  fromField = fromFieldTextual "DotName"
+
+instance ToField DotName where
+  toField = toFieldTextual
+
+instance ToHttpApiData DotName where
+  toUrlPiece = toText
+
+instance FromHttpApiData DotName where
+  parseUrlPiece = parseUrlPieceTextual "DotName"
+
+type instance TypeAttributeConstructor DotName = 'ConstructorS
+
+instance FromAttributeConstructorType DotName where
+  fromAttributeConstructorType = fromText
+
+instance FromScalarAttributeValue DotName
+
+instance FromAttributeValue DotName where
+  fromAttributeValue = fromScalarAttributeValue
+
+instance ToAttributeConstructorType DotName where
+  toAttributeConstructorType = toText
+
+instance ToScalarAttributeValue DotName
+
+instance ToAttributeValue DotName where
+  toAttributeValue = toScalarAttributeValue
 
 ipFromSockAddr :: SockAddr -> Maybe IP
 ipFromSockAddr (SockAddrInet _ hostAddress) = let (t1, t2, t3, t4) = hostAddressToTuple hostAddress in Just $ IP.ipv4 t1 t2 t3 t4
