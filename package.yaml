@@ -56,7 +56,6 @@ dependencies:
 - tagged
 - template-haskell
 - text
-- triplesec
 - uuid
 - vector
 - wai

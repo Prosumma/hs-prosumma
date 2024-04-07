@@ -3,18 +3,7 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages:
-- completed:
-    name: triplesec
-    pantry-tree:
-      sha256: 6373e387323d7fabca9d523ad0880e21c75ba3f4d478c97f5f5fd16aaa4bd791
-      size: 1203
-    sha256: cbc0d9acb9b61b1e99c50225c0cb89f27091a7d36741df82c6e559a622db2bec
-    size: 15579
-    url: https://github.com/SamProtas/hs-triplesec/archive/82c08710429e50a99bbe340e4471e410b15aa81b.tar.gz
-    version: 0.2.2.1
-  original:
-    url: https://github.com/SamProtas/hs-triplesec/archive/82c08710429e50a99bbe340e4471e410b15aa81b.tar.gz
+packages: []
 snapshots:
 - completed:
     sha256: 5b002d57c51092aa58a8696ccf0993e74fa6ed2efd48e2bbca349e9c2f67c5ef
