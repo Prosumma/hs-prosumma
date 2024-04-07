@@ -1,29 +1,19 @@
 module Spec.Crypto (testCrypto) where
 
 import Amazonka
+import Prelude (print)
 import Prosumma
-import Prosumma.AWS
 import Prosumma.Crypto
 import RIO
 import Test.Hspec
 
-data TestContext = TestContext { tcEnv :: !Env, tcMasterKeyArn :: !Text }
-
-instance HasAWSEnv TestContext where
-  getAWSEnv = tcEnv
-
-instance HasMasterKeyArn TestContext where
-  getMasterKeyArn = tcMasterKeyArn
-
 testCrypto :: Spec
 testCrypto = do
-  describe "symmetric cryptography" $
-    it "successfully encrypts and decrypts" $ do 
-      env <- newEnv discover
+  describe "symmetric cryptography" $ do
+    it "successfully encrypts and decrypts" $ do
       masterKeyArn <- envString Nothing "AWS_MASTER_KEY_ARN"
-      let context = TestContext env masterKeyArn
-      let input = "watusi"
-      decrypted <- runRIO context $ do
-        encrypted <- encryptMessage input 
-        decryptMessage encrypted
-      input `shouldBe` decrypted
+      env <- liftIO $ newEnv discover
+      x <- runRIO env $ encryptMessageWithMasterKey masterKeyArn "bazzle"
+      liftIO $ print x
+      bazzle <- runRIO env $ decryptMessage x
+      bazzle `shouldBe` "bazzle"

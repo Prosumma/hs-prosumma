@@ -30,6 +30,7 @@ dependencies:
 - base >= 4.7 && < 5
 - base64-bytestring
 - composition-prelude
+- cryptonite
 - data-default
 - email-validate
 - exceptions
@@ -40,6 +41,7 @@ dependencies:
 - ip
 - lens
 - listsafe
+- memory
 - mtl
 - network
 - postgresql-simple

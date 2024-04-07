@@ -1,93 +1,88 @@
-{-# LANGUAGE DataKinds, DeriveDataTypeable, FlexibleContexts, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, TypeApplications #-}
 
 module Prosumma.Crypto (
+  CryptoException(..),
+  combineMessageWithKeyAndIV,
   decryptMessage,
   encryptMessage,
-  encryptMessageWithMasterKey,
-  DecryptionException,
-  EncryptionException,
-  HasMasterKeyArn(..)
+  encryptMessageWithMasterKey
 ) where
 
-import Amazonka
-import Amazonka.Data.ByteString
+import Amazonka.Data
 import Amazonka.KMS
 import Control.Lens ((?~))
-import Crypto.TripleSec hiding (DecryptionException, EncryptionException)
+import Crypto.Cipher.AES
+import Crypto.Cipher.Types
+import Crypto.Error
+import Crypto.Random
 import Data.Generics.Product
+import Data.ByteArray (convert)
+import Data.String.Conversions
 import Prosumma.AWS
 import Prosumma.Util
 import RIO
 
-import qualified RIO.ByteString as BS
-
-keyLength :: Int
-keyLength = 184
-
-throwOnTripleSecException :: (MonadUnliftIO m, Exception e) => e -> TripleSecException -> m ByteString
-throwOnTripleSecException e _ = throwIO e 
+import qualified RIO.ByteString as ByteString
 
 class HasMasterKeyArn a where
   getMasterKeyArn :: a -> Text
 
-data EncryptionException = EncryptionException deriving (Show, Typeable)
-instance Exception EncryptionException
+data CryptoException = EncryptionException | DecryptionException deriving Show
+instance Exception CryptoException
 
--- | Encrypts a message given a KMS master key arn.
---
--- Here's how this works in a nutshell:
--- 
--- 1. We ask KMS for a new password/ciphertext pair.
--- 2. We use the plaintext password to encrypt the message with TripleSec.
--- 3. We then prefix the encrypted message with the ciphertext. The result
--- is our encrypted message.
---
--- The first 184 bytes of the encrypted message contain the password used
--- to encrypt the message, but of course this password is itself encrypted
--- by KMS.
+-- | Length of the enciphered key.
+-- When decrypted, it's 32 bytes, which AES256 expects.
+keyLength :: Int
+keyLength = 184 
+
+ivLength :: Int
+ivLength = 16
+
+generateIV :: MonadIO m => m (IV AES256) 
+generateIV = do 
+  iv <- makeIV <$> liftIO bytes
+  case iv of
+    Nothing -> throwIO EncryptionException
+    Just iv -> return iv
+  where
+    bytes :: IO ByteString 
+    bytes = getRandomBytes ivLength 
+
+combineMessageWithKeyAndIV :: MonadIO m => CryptoException -> ByteString -> IV AES256 -> ByteString -> m ByteString
+combineMessageWithKeyAndIV e key iv plaintext = do
+  case cipherInit key :: CryptoFailable AES256 of
+    CryptoFailed _ -> throwIO e 
+    CryptoPassed cipher -> return $ ctrCombine cipher iv plaintext
+
 encryptMessageWithMasterKey
-  :: (MonadUnliftIO m, MonadReader env m, HasAWSEnv env)
+  :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasAWSEnv env)
   => Text -> ByteString -> m ByteString
-encryptMessageWithMasterKey masterKeyArn message = do
-  resp <- sendAWS $ newGenerateDataKey masterKeyArn &
-    (field @"keySpec") ?~ DataKeySpec_AES_256
-  let password = toBS $ resp^.(field @"plaintext")
+encryptMessageWithMasterKey masterKeyArn plaintext = do 
+  resp <- sendAWSThrowOnStatus $ newGenerateDataKey masterKeyArn
+    & (field @"keySpec") ?~ DataKeySpec_AES_256 
+  let password = unBase64 $ fromSensitive $ resp^.(field @"plaintext")
   let ciphertextBlob = unBase64 $ resp^.(field @"ciphertextBlob")
-  liftIO $ 
-    flip catch (throwOnTripleSecException EncryptionException) $ 
-      BS.append ciphertextBlob <$> encryptIO password message
+  iv <- generateIV
+  encrypted <- combineMessageWithKeyAndIV EncryptionException password iv plaintext
+  return $ ciphertextBlob <> convert iv <> encrypted
 
--- | Encrypts a message using the KMS master key arn in the context.
--- 
--- See encryptMessageWithMasterKey for a fuller explanation.
 encryptMessage
-  :: (MonadUnliftIO m, MonadReader env m, HasMasterKeyArn env, HasAWSEnv env)
+  :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasAWSEnv env, HasMasterKeyArn env)
   => ByteString -> m ByteString
 encryptMessage = asks getMasterKeyArn >>=> encryptMessageWithMasterKey 
 
-data DecryptionException = DecryptionException deriving (Show, Typeable)
-instance Exception DecryptionException
-
--- | Decrypts a message given a KMS master key arn.
--- 
--- This just performs the actions of `encryptMessage` in reverse.
--- 
--- 1. Get the first 184 bytes. This is the encrypted password.
--- 2. Decrypt the password with KMS.
--- 3. Decrypt the message with the decrypted password.
-decryptMessage 
-  :: (MonadUnliftIO m, MonadReader env m, MonadThrow m, HasAWSEnv env)
+decryptMessage
+  :: (MonadUnliftIO m, MonadThrow m, HasAWSEnv env, MonadReader env m)
   => ByteString -> m ByteString
-decryptMessage message =
-  if BS.length message <= keyLength
-    then throwM DecryptionException
-    else do
-      let ciphertextBlob = BS.take keyLength message
-      let ciphertext = BS.drop keyLength message
-      maybePassword <- sendAWS (newDecrypt ciphertextBlob) <&>
-        fmap toBS . view (field @"plaintext")
-      case maybePassword of
+decryptMessage ciphertext = do 
+  when (ByteString.length ciphertext <= keyLength) $ throwIO DecryptionException
+  let (encryptedKey, rest) = ByteString.splitAt keyLength ciphertext
+  resp <- sendAWSThrowOnStatus $ newDecrypt encryptedKey 
+  case unBase64 . fromSensitive <$> resp^.(field @"plaintext") of
+    Nothing -> throwIO DecryptionException
+    Just decryptedKey -> do 
+      when (ByteString.length rest <= ivLength) $ throwIO DecryptionException
+      let (ivBytes, ciphertext') = ByteString.splitAt ivLength rest
+      case makeIV ivBytes of
         Nothing -> throwIO DecryptionException
-        Just password -> liftIO $
-          flip catch (throwOnTripleSecException DecryptionException) $
-            decryptIO password ciphertext
+        Just iv -> combineMessageWithKeyAndIV DecryptionException decryptedKey iv ciphertext'
