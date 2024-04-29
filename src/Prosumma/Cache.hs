@@ -16,6 +16,7 @@ module Prosumma.Cache (
   Outcome(..),
   Reap,
   Result,
+  Sentinel(..),
   Store,
   cacheDelete,
   cacheGet,
