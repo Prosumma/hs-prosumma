@@ -23,6 +23,7 @@ module Prosumma.Types (
 ) where
 
 import Data.Aeson
+import Data.CaseInsensitive (CI, FoldCase)
 import Data.Default
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
@@ -36,9 +37,16 @@ import Servant
 import Text.Printf
 import Text.Regex.TDFA
 
+import qualified Data.CaseInsensitive as CI
 import qualified Data.String.Conversions.Monomorphic as S
 import qualified Net.IP as IP
 import qualified RIO.Text as Text
+
+instance (FoldCase a, FromJSON a) => FromJSON (CI a) where
+  parseJSON value = CI.mk <$> parseJSON value
+
+instance ToJSON a => ToJSON (CI a) where
+  toJSON = toJSON . CI.original
 
 data CRUDOperation = Create | Read | Update | Delete deriving (Eq, Ord, Enum, Show, Read, Generic, Hashable, Data, Typeable, NFData)
 

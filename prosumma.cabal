@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           prosumma
-version:        1.5.1.0
+version:        1.5.2.0
 description:    Please see the README on GitHub at <https://github.com/prosumma/hs-prosumma#readme>
 homepage:       https://github.com/prosumma/prosumma#readme
 bug-reports:    https://github.com/prosumma/prosumma/issues
@@ -70,6 +70,7 @@ library
     , attoparsec
     , base >=4.7 && <5
     , base64-bytestring
+    , case-insensitive
     , composition-prelude
     , cryptonite
     , data-default
@@ -134,6 +135,7 @@ executable prosumma-exe
     , attoparsec
     , base >=4.7 && <5
     , base64-bytestring
+    , case-insensitive
     , composition-prelude
     , cryptonite
     , data-default
@@ -210,6 +212,7 @@ test-suite library-test
     , attoparsec
     , base >=4.7 && <5
     , base64-bytestring
+    , case-insensitive
     , composition-prelude
     , cryptonite
     , data-default

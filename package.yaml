@@ -1,5 +1,5 @@
 name:                prosumma
-version:             1.5.1.0
+version:             1.5.2.0
 github:              "prosumma/prosumma"
 license:             MIT 
 author:              "Gregory Higley / Prosumma Inc."
@@ -29,6 +29,7 @@ dependencies:
 - attoparsec
 - base >= 4.7 && < 5
 - base64-bytestring
+- case-insensitive
 - composition-prelude
 - cryptonite
 - data-default
