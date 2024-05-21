@@ -9,8 +9,6 @@ import Prosumma.Types
 import RIO
 import Test.Hspec
 
-import qualified Data.CaseInsensitive as CI
-
 newtype Foo = Foo { foo :: CI Text } deriving (Generic, Eq, Show)
 
 instance FromJSON Foo
