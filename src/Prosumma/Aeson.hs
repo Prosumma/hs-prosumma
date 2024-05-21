@@ -1,10 +1,12 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Prosumma.Aeson (
+ FromJSONObject(..),
  JSONStripPredicate,
  ParentContext(..),
  StripIn(..),
  ToParentContext(..),
+ ToJSONPairs(..),
  inArrays,
  inObjects,
  ofAll,
@@ -21,12 +23,19 @@ module Prosumma.Aeson (
 ) where
 
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Char
 import RIO
 
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as V
 import qualified RIO.Text as T
+
+class ToJSONPairs a where
+  toJSONPairs :: a -> [Pair]
+
+class FromJSONObject a where
+  parseJSONObject :: Object -> Parser a
 
 data ParentContext = NoParent | ObjectParent Key ParentContext | ArrayParent Int ParentContext deriving (Eq, Show)
 
