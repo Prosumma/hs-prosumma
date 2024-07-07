@@ -47,6 +47,7 @@ runApplication
   => (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler transform proxy api state = serve proxy $ hoistServer proxy (mapApp handler transform state) api
 
+{-# DEPRECATED runApplicationWithLogging "Use runApplication instead." #-}
 runApplicationWithLogging
   :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
   => LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
