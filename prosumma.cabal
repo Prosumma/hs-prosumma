@@ -91,6 +91,7 @@ library
     , resource-pool
     , rio
     , servant-auth
+    , servant-auth-server
     , servant-client
     , servant-server
     , split
@@ -157,6 +158,7 @@ executable prosumma-exe
     , resource-pool
     , rio
     , servant-auth
+    , servant-auth-server
     , servant-client
     , servant-server
     , split
@@ -237,6 +239,7 @@ test-suite library-test
     , resource-pool
     , rio
     , servant-auth
+    , servant-auth-server
     , servant-client
     , servant-server
     , split

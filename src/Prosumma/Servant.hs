@@ -1,10 +1,11 @@
-{-# LANGUAGE DataKinds, FlexibleContexts, KindSignatures, RankNTypes #-}
+{-# LANGUAGE DataKinds, FlexibleContexts, KindSignatures, RankNTypes, TypeOperators #-}
 
 module Prosumma.Servant (
   defaultExceptionHandler,
   loggingExceptionHandler,
   mapServerException,
   runApplication,
+  runApplicationWithContext,
   runApplicationWithLogging,
   ServerExceptionHandler,
   ServerHandler,
@@ -50,3 +51,9 @@ runApplicationWithLogging
   :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
   => LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplicationWithLogging logFunc proxy api state = runApplication loggingExceptionHandler id proxy api $ state & logFuncL .~ logFunc
+
+runApplicationWithContext
+  :: forall (api :: Type) (context :: [Type]) s. (HasServer api context, HasContextEntry (context .++ DefaultErrorFormatters) ErrorFormatters)
+  => Context context -> (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
+runApplicationWithContext context handler transform proxy api state =
+  serveWithContext proxy context $ hoistServerWithContext proxy (Proxy :: Proxy context) (mapApp handler transform state) api

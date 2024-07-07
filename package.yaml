@@ -50,6 +50,7 @@ dependencies:
 - resource-pool
 - rio
 - servant-auth
+- servant-auth-server
 - servant-client
 - servant-server
 - split
