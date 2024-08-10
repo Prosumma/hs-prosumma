@@ -7,8 +7,6 @@
 -- put "cache" at the beginning, e.g., @cacheGet@, @cachePut@.
 --
 -- Order of arguments closely follows those used for @Map@.
--- 
--- Reaping is the process of 
 module Prosumma.Cache (
   Cache,
   Entry(..),
