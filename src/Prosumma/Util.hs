@@ -10,6 +10,7 @@ module Prosumma.Util (
   fromTextReader,
   hush,
   makeProsummaLenses,
+  makeLensesL,
   makeLensesWith,
   om,
   slipr,
@@ -74,6 +75,10 @@ addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
     capitalize [] = []
     capitalize (c:cs) = toUpper c : cs
 
+makeLensesL :: Name -> DecsQ
+makeLensesL = makeLensesWith addL
+
+{-# DEPRECATED makeProsummaLenses "Use makeLensesL instead." #-}
 makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
 
