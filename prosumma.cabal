@@ -1,11 +1,11 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           prosumma
-version:        1.5.2.0
+version:        1.5.4.0
 description:    Please see the README on GitHub at <https://github.com/prosumma/hs-prosumma#readme>
 homepage:       https://github.com/prosumma/prosumma#readme
 bug-reports:    https://github.com/prosumma/prosumma/issues
