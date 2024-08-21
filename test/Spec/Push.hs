@@ -13,14 +13,14 @@ testPush = do
   describe "Push" $ do
     it "serializes properly" $ do
       let push = newPush (Message "Hello!")
-            & badge ?~ 5
-            & customData .~ KM.fromList ["x" .= (3 :: Int)]
+            & badgeL ?~ 5
+            & customDataL .~ KM.fromList ["x" .= (3 :: Int)]
       let j = encode push
       j `shouldBe` "{\"badge\":5,\"body\":\"Hello!\",\"data\":{\"x\":3}}"
     it "deserializes properly" $ do
       let j = "{\"badge\":5,\"body\":\"Hello!\",\"data\":{\"x\":3}}"
       let push :: Maybe Push = decode j
       let expected = newPush (Message "Hello!")
-            & badge ?~ 5
-            & customData .~ KM.fromList ["x" .= (3 :: Int)]
+            & badgeL ?~ 5
+            & customDataL .~ KM.fromList ["x" .= (3 :: Int)]
       push `shouldBe` Just expected 

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, PatternSynonyms, TemplateHaskell, TypeFamilies, NoGeneralisedNewtypeDeriving #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields, PatternSynonyms, TemplateHaskell, TypeFamilies, NoGeneralisedNewtypeDeriving #-}
 
 module Prosumma.Types (
   AppName,
@@ -13,8 +13,8 @@ module Prosumma.Types (
   PushSystem(..),
   Region,
   ipFromSockAddr,
-  language,
-  region,
+  languageL,
+  regionL,
   pattern DotName,
   pattern IANATimeZone,
   pattern Language,
@@ -133,11 +133,11 @@ instance FromHttpApiData Region where
   parseUrlPiece = parseUrlPieceTextual "Region"
 
 data Localization = Localization {
-  localizationLanguage :: !Language,
-  localizationRegion :: !(Maybe Region)
+  language :: !Language,
+  region :: !(Maybe Region)
 } deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
-makeProsummaLenses ''Localization
+makeLensesL ''Localization
 
 instance Show Localization where
   show (Localization language (Just region)) = printf "%s-%s" (show language) (show region)

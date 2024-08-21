@@ -13,19 +13,12 @@ import qualified Formatting as F
 import qualified RIO.HashMap as HashMap
 import qualified RIO.Set as Set
 
-data Structure = Structure {
-  strucText :: !Text,
-  strucInt :: !Int
-} deriving (Eq, Show)
-
-makeProsummaLenses ''Structure
-
 data Something = Something {
   x :: !Int,
   xs :: ![Maybe Int]
 } deriving (Eq, Show)
 
-makeLensesWith addL ''Something
+makeLensesL ''Something
 
 testUtil :: Spec
 testUtil = do
@@ -42,13 +35,7 @@ testUtil = do
       let expected = fromList [(2, 3), (4, 5)]
       let tested = 2 <=> 3 <> 4 <=> 5
       expected `shouldBe` tested
-  describe "makeProsummaLenses" $
-    it "makes abbreviated lenses" $ do
-      let structure = Structure "xyz" 3
-      structure^.text `shouldBe` "xyz"
-      structure^.int `shouldBe` 3
-      (structure & int .~ 44) `shouldBe` Structure "xyz" 44
-  describe "addL" $ do
+  describe "makeLensesL" $ do
     it "makes lenses with the suffix L" $ do
       let something = Something 2 [Just 4]
       something^.xL `shouldBe` 2

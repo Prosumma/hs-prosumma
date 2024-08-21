@@ -1,12 +1,12 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DuplicateRecordFields, TemplateHaskell #-}
 
 module Prosumma.Push (
   Message(..),
   Push(..),
-  badge,
-  category,
-  customData,
-  message,
+  badgeL,
+  categoryL,
+  customDataL,
+  messageL,
   newAlert,
   newPush
 ) where
@@ -44,21 +44,21 @@ type MaybeInt = Maybe Int
 
 -- | A cross-platform push notification type
 data Push = Push {
-  pushMessage :: !Message,
+  message :: !Message,
   -- | APNS only, ignored by FCM
-  pushBadge :: !MaybeInt,
+  badge :: !MaybeInt,
   -- | APNS only, ignored by FCM
-  pushCategory :: !MaybeText,
-  pushCustomData :: !Object
+  category :: !MaybeText,
+  customData :: !Object
 } deriving (Eq, Show)
 
-makeProsummaLenses ''Push
+makeLensesL ''Push
 
 instance Default Push where
   def = Push ContentAvailable Nothing Nothing mempty
 
 newPush :: Message -> Push
-newPush message = def { pushMessage = message } 
+newPush message = def { message } 
 
 newAlert :: Text -> Push
 newAlert = newPush . Message 
@@ -72,8 +72,8 @@ instance FromJSON Push where
       <*> (fromMaybe mempty <$> o .:? "data")
 
 instance ToJSON Push where
-  toJSON Push{..} = stripJSON (ofAll InBoth) $ object $ messageToPairs pushMessage <> [
-      "badge" .= pushBadge,
-      "category" .= pushCategory,
-      "data" .= pushCustomData
+  toJSON Push{..} = stripJSON (ofAll InBoth) $ object $ messageToPairs message <> [
+      "badge" .= badge,
+      "category" .= category,
+      "data" .= customData
     ]
