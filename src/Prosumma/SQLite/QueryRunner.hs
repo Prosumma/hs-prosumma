@@ -1,6 +1,10 @@
 {-# LANGUAGE GADTs #-}
 
-module Prosumma.SQLite.QueryRunner where
+module Prosumma.SQLite.QueryRunner (
+  QueryRunner(..),
+  SQLQuery(..),
+  TransactionRunner(..)
+) where
 
 import Database.SQLite.Simple (Connection, ToRow, Query, FromRow)
 import RIO
