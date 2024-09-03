@@ -1,10 +1,12 @@
-{-# LANGUAGE DeriveGeneric, FunctionalDependencies #-}
+{-# LANGUAGE DeriveGeneric, FunctionalDependencies, OverloadedStrings #-}
 
 -- | Tests for SQLite and the Repository pattern.
 module Spec.SQLite (testSQLite) where
 
-import Database.SQLite.Simple (FromRow, ToRow)
+import Database.SQLite.Simple (setTrace, FromRow, ToRow)
+import Formatting
 import Prosumma.SQLite
+import Prosumma.Util
 import RIO
 import Test.Hspec
 
@@ -54,7 +56,10 @@ testSQLite = describe "SQLite integration" $ do
   it "works" $ do
     conn <- liftIO $ open ":memory:"
     let input = User 3 "Bob"
-    output <- runRIO conn $ do
-      createUserSchema
-      withTransaction $ addUser input >> getFirstUser
+    logOptions <- logOptionsHandle stderr True
+    output <- withLogFunc logOptions $ \lf -> do
+      -- setTrace conn $ Just (logSQLite lf)
+      runRIO conn $ do
+        createUserSchema
+        withTransaction $ addUser input >> getFirstUser
     input `shouldBe` output

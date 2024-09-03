@@ -10,6 +10,7 @@ module Prosumma.SQLite (
   query1_,
   query1,
   queryRunnerL,
+  logSQLite,
   value1_,
   value1,
   withTransaction,
@@ -27,12 +28,31 @@ import Database.SQLite.Simple (close, open, Connection, FromRow, ToRow)
 import Database.SQLite.Simple.FromField (FromField)
 import Database.SQLite.Simple.Types
 import Data.List.Safe
+import Formatting
 import Prosumma.SQLite.QueryRunner (QueryRunner, SQLQuery(..), TransactionRunner)
 import Prosumma.Util
 import RIO
 
 import qualified Prosumma.SQLite.QueryRunner as QR
 
+logSource :: LogSource
+logSource = "SQL"
+
+-- | Helper function for SQLite logging.
+--
+-- Use this with @Database.SQLite.Simple.setTrace@, e.g.,
+--
+-- > logOptions <- logOptionsHandle stderr
+-- > withLogFunc logOptions $ \lf -> do
+-- >   liftIO $ setTrace $ Just (logSQLite lf)
+logSQLite :: LogFunc -> Text -> IO () 
+logSQLite lf sql = runRIO lf $ logDebugS logSource $ uformat stext sql
+
+-- | A SQLite QueryRunner with a RIO logger. 
+--
+-- You don't need this type to get logging for SQLite.
+-- Instead, use @Database.SQLite.Simple.setTrace@ with the
+-- @logSQLite@ function.
 data SQLite r = SQLite {
   queryRunner :: !r,
   logFunc :: !LogFunc
