@@ -186,6 +186,7 @@ test-suite library-test
       Spec.Crypto
       Spec.Exceptions
       Spec.Push
+      Spec.SQLite
       Spec.Textual
       Spec.Types
       Spec.Util

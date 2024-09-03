@@ -6,6 +6,7 @@ import Spec.Cache
 import Spec.Crypto
 import Spec.Exceptions
 import Spec.Push
+import Spec.SQLite
 import Spec.Textual
 import Spec.Types
 import Spec.Util
@@ -19,6 +20,7 @@ main = hspec $ do
   testCrypto
   testExceptions
   testPush
+  testSQLite
   testTextual
   testTypes
   testUtil
