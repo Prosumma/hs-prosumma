@@ -36,6 +36,8 @@ library
       Prosumma.PG.QueryRunner
       Prosumma.Push
       Prosumma.Servant
+      Prosumma.SQLite
+      Prosumma.SQLite.QueryRunner
       Prosumma.Tagged
       Prosumma.Textual
       Prosumma.Types
