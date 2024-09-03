@@ -65,17 +65,20 @@ testSQLite = do
   describe "SQLite integration" $ do
     it "works" $ do
       conn <- liftIO $ open ":memory:"
-      let input = User 3 "Bob"
+      let input = User 3 "SQLite"
       logOptions <- logOptionsHandle stderr True
       output <- withLogFunc logOptions $ \lf -> do
         setTrace conn $ Just (logSQLite lf)
         runRIO conn $ do
           createUserSchema
+          -- Using withTransaction directly is a bad practice.
+          -- The repository itself should use it internally.
+          -- But this is just a unit test, so it's OK.
           withTransaction $ addUser input >> getFirstUser
       input `shouldBe` output
   describe "Repository mock" $ do
     it "works" $ do
-      let input = User 3 "Mock"
+      let input = User 10 "MockDB"
       ref <- newIORef []
       let db = MockDB ref
       output <- runRIO db $ createUserSchema >> addUser input >> getFirstUser
