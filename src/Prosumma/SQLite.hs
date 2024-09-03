@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot, TemplateHaskell #-}
+
 module Prosumma.SQLite (
   close,
   execute_,
@@ -7,6 +9,7 @@ module Prosumma.SQLite (
   query,
   query1_,
   query1,
+  queryRunnerL,
   value1_,
   value1,
   withTransaction,
@@ -15,6 +18,7 @@ module Prosumma.SQLite (
   Only(..),
   Query,
   QueryRunner,
+  SQLite(..),
   TransactionRunner
 ) where
 
@@ -24,9 +28,24 @@ import Database.SQLite.Simple.FromField (FromField)
 import Database.SQLite.Simple.Types
 import Data.List.Safe
 import Prosumma.SQLite.QueryRunner (QueryRunner, SQLQuery(..), TransactionRunner)
+import Prosumma.Util
 import RIO
 
 import qualified Prosumma.SQLite.QueryRunner as QR
+
+data SQLite r = SQLite {
+  queryRunner :: !r,
+  logFunc :: !LogFunc
+}
+
+makeLensesL ''SQLite
+
+instance HasLogFunc (SQLite r) where
+  logFuncL = Prosumma.SQLite.logFuncL
+
+instance QueryRunner r => QueryRunner (SQLite r) where
+  execute sql sqlite = QR.execute sql sqlite.queryRunner
+  query sql sqlite = QR.query sql sqlite.queryRunner
 
 execute_ 
   :: (MonadReader env m, QueryRunner env, MonadUnliftIO m)
