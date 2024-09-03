@@ -16,6 +16,11 @@ data User = User {
 instance FromRow User where
 instance ToRow User where
 
+-- | Implements the repository pattern.
+--
+-- The repository pattern is overkill for this,
+-- but this is both a test of it and a reference
+-- for it.
 class UserRepository r where
   createUserSchemaR :: MonadIO m => r -> m ()
   addUserR :: MonadIO m => User -> r -> m ()
@@ -49,5 +54,7 @@ testSQLite = describe "SQLite integration" $ do
   it "works" $ do
     conn <- liftIO $ open ":memory:"
     let input = User 3 "Bob"
-    output <- runRIO conn $ createUserSchema >> addUser input >> getFirstUser
+    output <- runRIO conn $ do
+      createUserSchema
+      withTransaction $ addUser input >> getFirstUser
     input `shouldBe` output
