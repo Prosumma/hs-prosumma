@@ -79,7 +79,6 @@ testSQLite = do
   describe "Repository mock" $ do
     it "works" $ do
       let input = User 10 "MockDB"
-      ref <- newIORef []
-      let db = MockDB ref
+      db <- MockDB <$> newIORef [] 
       output <- runRIO db $ createUserSchema >> addUser input >> getFirstUser
       input `shouldBe` output
