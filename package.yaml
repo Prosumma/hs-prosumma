@@ -54,6 +54,7 @@ dependencies:
 - servant-client
 - servant-server
 - split
+- sqlite-simple
 - string-conversions
 - tagged
 - template-haskell
