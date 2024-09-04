@@ -37,7 +37,7 @@ instance UserRepository Connection where
 instance UserRepository MockDB where
   createUserSchemaR _ = return ()
   addUserR user db = modifyIORef db.users (<> [user]) 
-  getFirstUserR db = (!! 0) <$> readIORef db.users
+  getFirstUserR db = readIORef db.users <&> (!! 0)
 
 class UserRepository r => HasUserRepository r env | env -> r where
   getUserRepository :: env -> r 
