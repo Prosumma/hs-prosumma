@@ -12,7 +12,7 @@ testPush :: Spec
 testPush = do 
   describe "Push" $ do
     it "serializes properly" $ do
-      let push = newPush (Message "Hello!")
+      let push = newAlert "Hello!"
             & badgeL ?~ 5
             & customDataL .~ KM.fromList ["x" .= (3 :: Int)]
       let j = encode push
@@ -20,7 +20,7 @@ testPush = do
     it "deserializes properly" $ do
       let j = "{\"badge\":5,\"body\":\"Hello!\",\"data\":{\"x\":3}}"
       let push :: Maybe Push = decode j
-      let expected = newPush (Message "Hello!")
+      let expected = newAlert "Hello!"
             & badgeL ?~ 5
             & customDataL .~ KM.fromList ["x" .= (3 :: Int)]
       push `shouldBe` Just expected 

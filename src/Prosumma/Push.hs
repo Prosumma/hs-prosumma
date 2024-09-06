@@ -1,6 +1,9 @@
 {-# LANGUAGE DuplicateRecordFields, TemplateHaskell #-}
 
 module Prosumma.Push (
+  _ContentAvailable,
+  _Message,
+  _TitledMessage,
   Message(..),
   Push(..),
   badgeL,
@@ -11,6 +14,7 @@ module Prosumma.Push (
   newPush
 ) where
 
+import Control.Lens (makePrisms)
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Default
@@ -19,6 +23,8 @@ import Prosumma.Util
 import RIO
 
 data Message = ContentAvailable | Message !Text | TitledMessage !Text !Text deriving (Eq, Show)
+
+makePrisms ''Message
 
 parseMessage :: Object -> Parser Message
 parseMessage o = do
