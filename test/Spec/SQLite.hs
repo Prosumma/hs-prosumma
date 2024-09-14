@@ -64,7 +64,7 @@ testSQLite :: Spec
 testSQLite = do
   describe "SQLite integration" $ do
     it "works" $ do
-      conn <- liftIO $ open ":memory:"
+      conn <- open ":memory:"
       let input = User 3 "SQLite"
       logOptions <- logOptionsHandle stderr True
       output <- withLogFunc logOptions $ \lf -> do

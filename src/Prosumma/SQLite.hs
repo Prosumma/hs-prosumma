@@ -24,7 +24,7 @@ module Prosumma.SQLite (
 ) where
 
 import Control.Composition
-import Database.SQLite.Simple (close, open, Connection, FromRow, ToRow)
+import Database.SQLite.Simple (Connection, FromRow, ToRow)
 import Database.SQLite.Simple.FromField (FromField)
 import Database.SQLite.Simple.Types
 import Data.List.Safe
@@ -33,6 +33,7 @@ import Prosumma.SQLite.QueryRunner (QueryRunner, SQLQuery(..), TransactionRunner
 import Prosumma.Util
 import RIO
 
+import qualified Database.SQLite.Simple as SQLite
 import qualified Prosumma.SQLite.QueryRunner as QR
 
 logSource :: LogSource
@@ -47,6 +48,12 @@ logSource = "SQL"
 -- >   liftIO $ setTrace $ Just (logSQLite lf)
 logSQLite :: LogFunc -> Text -> IO () 
 logSQLite lf sql = runRIO lf $ logDebugS logSource $ uformat stext sql
+
+open :: MonadIO m => FilePath -> m Connection
+open = liftIO . SQLite.open 
+
+close :: MonadIO m => Connection -> m ()
+close = liftIO . SQLite.close
 
 -- | A SQLite QueryRunner with a RIO logger. 
 --
