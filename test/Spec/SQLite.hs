@@ -3,7 +3,7 @@
 -- | Tests for SQLite and the Repository pattern.
 module Spec.SQLite (testSQLite) where
 
-import Database.SQLite.Simple (setTrace, FromRow, ToRow)
+import Database.SQLite.Simple (FromRow, ToRow)
 import Prosumma.SQLite
 import RIO
 import RIO.List.Partial ((!!))
@@ -42,8 +42,8 @@ instance UserRepository MockDB where
 class UserRepository r => HasUserRepository r env | env -> r where
   getUserRepository :: env -> r 
 
-instance HasUserRepository Connection Connection where
-  getUserRepository = RIO.id
+instance HasUserRepository Connection (SQLite Connection) where
+  getUserRepository (SQLite conn _) = conn 
 
 instance HasUserRepository MockDB MockDB where
   getUserRepository = RIO.id
@@ -68,12 +68,9 @@ testSQLite = do
       let input = User 3 "SQLite"
       logOptions <- logOptionsHandle stderr True
       output <- withLogFunc logOptions $ \lf -> do
-        setTrace conn $ Just (logSQLite lf)
-        runRIO conn $ do
+        runRIO (SQLite conn lf) $ do
+          setTrace conn $ Just logSQLite 
           createUserSchema
-          -- Using withTransaction directly is a bad practice.
-          -- The repository itself should use it internally.
-          -- But this is just a unit test, so it's OK.
           withTransaction $ addUser input >> getFirstUser
       input `shouldBe` output
   describe "Repository mock" $ do

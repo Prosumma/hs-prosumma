@@ -11,6 +11,7 @@ module Prosumma.SQLite (
   query1,
   queryRunnerL,
   logSQLite,
+  setTrace,
   value1_,
   value1,
   withTransaction,
@@ -29,7 +30,7 @@ import Database.SQLite.Simple.FromField (FromField)
 import Database.SQLite.Simple.Types
 import Data.List.Safe
 import Formatting
-import Prosumma.SQLite.QueryRunner (QueryRunner, SQLQuery(..), TransactionRunner)
+import Prosumma.SQLite.QueryRunner (QueryRunner, SQLQuery(..), TransactionRunner(..))
 import Prosumma.Util
 import RIO
 
@@ -39,21 +40,18 @@ import qualified Prosumma.SQLite.QueryRunner as QR
 logSource :: LogSource
 logSource = "SQL"
 
--- | Helper function for SQLite logging.
---
--- Use this with @Database.SQLite.Simple.setTrace@, e.g.,
---
--- > logOptions <- logOptionsHandle stderr
--- > withLogFunc logOptions $ \lf -> do
--- >   liftIO $ setTrace $ Just (logSQLite lf)
-logSQLite :: LogFunc -> Text -> IO () 
-logSQLite lf sql = runRIO lf $ logDebugS logSource $ uformat stext sql
+logSQLite :: (MonadReader env m, HasLogFunc env, MonadIO m, HasCallStack) => Text -> m ()
+logSQLite sql = logDebugS logSource $ uformat stext sql
 
 open :: MonadIO m => FilePath -> m Connection
 open = liftIO . SQLite.open 
 
 close :: MonadIO m => Connection -> m ()
 close = liftIO . SQLite.close
+
+setTrace :: MonadUnliftIO m => Connection -> Maybe (Text -> m ()) -> m ()
+setTrace conn Nothing = liftIO $ SQLite.setTrace conn Nothing
+setTrace conn (Just log) = withRunInIO $ \runInIO -> SQLite.setTrace conn (Just $ runInIO . log)
 
 -- | A SQLite QueryRunner with a RIO logger. 
 --
@@ -73,6 +71,9 @@ instance HasLogFunc (SQLite r) where
 instance QueryRunner r => QueryRunner (SQLite r) where
   execute sql sqlite = QR.execute sql sqlite.queryRunner
   query sql sqlite = QR.query sql sqlite.queryRunner
+
+instance TransactionRunner r => TransactionRunner (SQLite r) where 
+  transact (SQLite conn _) = transact conn
 
 execute_ 
   :: (MonadReader env m, QueryRunner env, MonadUnliftIO m)
