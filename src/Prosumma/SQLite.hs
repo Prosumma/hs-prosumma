@@ -49,9 +49,8 @@ open = liftIO . SQLite.open
 close :: MonadIO m => Connection -> m ()
 close = liftIO . SQLite.close
 
-setTrace :: MonadUnliftIO m => Connection -> Maybe (Text -> m ()) -> m ()
-setTrace conn Nothing = liftIO $ SQLite.setTrace conn Nothing
-setTrace conn (Just log) = withRunInIO $ \runInIO -> SQLite.setTrace conn (Just $ runInIO . log)
+setTrace :: (MonadReader env m, HasLogFunc env, QueryRunner env, MonadUnliftIO m) => Maybe (Text -> m ()) -> m ()
+setTrace action = ask >>= flip QR.setTrace action 
 
 -- | A SQLite QueryRunner with a RIO logger. 
 --
@@ -71,6 +70,7 @@ instance HasLogFunc (SQLite r) where
 instance QueryRunner r => QueryRunner (SQLite r) where
   execute sql sqlite = QR.execute sql sqlite.queryRunner
   query sql sqlite = QR.query sql sqlite.queryRunner
+  setTrace (SQLite conn _) = QR.setTrace conn
 
 instance TransactionRunner r => TransactionRunner (SQLite r) where 
   transact (SQLite conn _) = transact conn

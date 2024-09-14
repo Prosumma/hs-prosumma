@@ -69,7 +69,7 @@ testSQLite = do
       logOptions <- logOptionsHandle stderr True
       output <- withLogFunc logOptions $ \lf -> do
         runRIO (SQLite conn lf) $ do
-          setTrace conn $ Just logSQLite 
+          setTrace $ Just logSQLite 
           createUserSchema
           withTransaction $ addUser input >> getFirstUser
       input `shouldBe` output
