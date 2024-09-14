@@ -4,6 +4,7 @@ module Prosumma.Servant (
   defaultExceptionHandler,
   loggingExceptionHandler,
   mapServerException,
+  maybeThrow404,
   runApplication,
   runApplicationWithContext,
   runApplicationWithLogging,
@@ -15,6 +16,7 @@ module Prosumma.Servant (
 
 import Control.Monad.Error.Class
 import Data.Kind
+import Prosumma.Util
 import RIO hiding (Handler)
 import Servant
 
@@ -58,3 +60,6 @@ runApplicationWithContext
   => Context context -> (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplicationWithContext context handler transform proxy api state =
   serveWithContext proxy context $ hoistServerWithContext proxy (Proxy :: Proxy context) (mapApp handler transform state) api
+
+maybeThrow404 :: MonadIO m => m (Maybe a) -> m a
+maybeThrow404 action = action >>= flip whenNothing (throwIO err404)
