@@ -14,6 +14,7 @@ module Prosumma.SQLite (
   setTrace,
   value1_,
   value1,
+  withTrace,
   withTransaction,
   withTransaction_,
   Connection,
@@ -51,6 +52,20 @@ close = liftIO . SQLite.close
 
 setTrace :: (MonadReader env m, HasLogFunc env, QueryRunner env, MonadUnliftIO m) => Maybe (Text -> m ()) -> m ()
 setTrace action = ask >>= flip QR.setTrace action 
+
+withTrace :: (MonadReader env m, HasLogFunc env, QueryRunner env, MonadUnliftIO m) => Bool -> m a -> m a
+withTrace trace action = do
+  if trace
+    then do
+      setTrace $ Just logSQLite
+      a <- action
+      setTrace Nothing
+      return a
+    else do
+      setTrace Nothing
+      a <- action
+      setTrace $ Just logSQLite
+      return a
 
 -- | A SQLite QueryRunner with a RIO logger. 
 --
