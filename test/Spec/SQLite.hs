@@ -67,11 +67,11 @@ testSQLite = do
       conn <- open ":memory:"
       let input = User 3 "SQLite"
       logOptions <- logOptionsHandle stderr True
-      output <- withLogFunc logOptions $ \lf -> do
-        runRIO (SQLite conn lf) $ do
-          setTrace $ Just logSQLite 
-          createUserSchema
-          withTransaction $ addUser input >> getFirstUser
+      output <- withLogFunc logOptions $ \lf ->
+        runRIO (SQLite conn lf) $
+          withTrace False $ do 
+            createUserSchema
+            withTransaction $ addUser input >> getFirstUser
       input `shouldBe` output
   describe "Repository mock" $ do
     it "works" $ do
