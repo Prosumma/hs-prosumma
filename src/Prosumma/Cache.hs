@@ -82,6 +82,7 @@ data Cache k v = Cache {
 data Outcome = Cached | Fetched deriving (Eq, Ord, Show)
 type Result v = Either SomeException (v, Outcome)
 
+{-# deprecated Sentinel "Just use () instead." #-}
 data Sentinel = Sentinel deriving (Eq, Ord, Show, Generic, Typeable, Hashable)
 
 withLockedStore :: MonadIO m => Cache k v -> (Store k v -> m (a, Store k v)) -> m a
