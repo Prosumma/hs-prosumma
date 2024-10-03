@@ -35,6 +35,7 @@ library
       Prosumma.PG
       Prosumma.PG.QueryRunner
       Prosumma.Push
+      Prosumma.RWLock
       Prosumma.Servant
       Prosumma.SQLite
       Prosumma.SQLite.QueryRunner
