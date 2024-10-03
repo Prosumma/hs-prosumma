@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, TemplateHaskell #-}
 
 module Prosumma.Cache (
   Cache,
@@ -16,6 +16,7 @@ module Prosumma.Cache (
   cacheGetMaybe,
   cacheGetResult,
   cachePut,
+  hitsL,
   newCache,
   setReap,
   valueL,
@@ -38,13 +39,14 @@ type Fetch k v = k -> IO v
 data Entry v = Entry {
   added    :: !UTCTime,
   accessed :: !UTCTime,
+  hits     :: !Integer,
   value    :: !v
 } deriving (Eq, Ord, Show)
 
 makeLensesL ''Entry
 
 newEntry :: UTCTime -> v -> Entry v
-newEntry time = Entry time time
+newEntry time = Entry time time 0
 
 type Store k v = HashMap k (Entry v) 
 type Reap m k v = Store k v -> m (Store k v)
@@ -91,22 +93,23 @@ type Result v = (v, Outcome)
 cacheGetEntry :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result (Entry v))
 cacheGetEntry k cache = do
   now <- getCurrentTime
+  let updateEntry entry = entry & accessedL .~ now & hitsL %~ (+1)
   let wlock = cache^.lockL
   store <- readWLock wlock
   case HashMap.lookup k store of
     Just entry -> do
-      let updatedEntry = entry & accessedL .~ now
-      void $ async $ withWLock_ wlock $ return . HashMap.update (const $ Just updatedEntry) k
+      let updatedEntry = updateEntry entry 
+      void $ async $ withWLock_ wlock $ return . HashMap.update (Just . updateEntry) k
       return (updatedEntry, Cached)
     Nothing -> withWLock wlock $ \store -> do
       case HashMap.lookup k store of
         Just entry -> do
-          let updatedEntry = entry & accessedL .~ now
+          let updatedEntry = updateEntry entry 
           let newStore = HashMap.update (const $ Just updatedEntry) k store 
           return (newStore, (updatedEntry, Cached))
         Nothing -> do
           v <- liftIO $ (cache^.fetchL) k
-          let entry = newEntry now v 
+          let entry = newEntry now v & hitsL %~ (+1)
           let newStore = HashMap.insert k entry store
           return (newStore, (entry, Fetched))
 
@@ -132,7 +135,7 @@ cachePut k v cache = do
   let entry = newEntry now v
   withWLock_ (cache^.lockL) $ return . HashMap.insert k entry
 
-withSizeLimitBy :: (Monad m, Hashable k) => (Entry v -> UTCTime) -> Int -> Reap m k v
+withSizeLimitBy :: (Monad m, Hashable k, Ord a) => (Entry v -> a) -> Int -> Reap m k v
 withSizeLimitBy attr limit store
   | HashMap.size store <= limit = return store
   | otherwise = return $ HashMap.fromList $ take limit $ sortOn (Down . attr . snd) $ HashMap.toList store
