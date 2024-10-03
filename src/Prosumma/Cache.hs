@@ -20,7 +20,6 @@ module Prosumma.Cache (
   withTTLBy,
 ) where
 
-import Prelude (putStrLn)
 import Prosumma.Util
 import Prosumma.WLock
 import RIO
@@ -96,7 +95,7 @@ cacheGetResult k cache = do
   case HashMap.lookup k store of
     Just entry -> do
       void $ async $ withWLock_ wlock $ return . updateAccessed now entry
-      return $ (entry^.valueL, Cached)
+      return (entry^.valueL, Cached)
     Nothing -> withWLock wlock $ \store -> do
       case HashMap.lookup k store of 
         Just entry -> do
