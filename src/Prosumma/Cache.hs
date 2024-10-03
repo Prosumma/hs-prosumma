@@ -11,6 +11,7 @@ module Prosumma.Cache (
   addedL,
   cacheDelete,
   cacheGet,
+  cacheGetEntry,
   cacheGetResult,
   cachePut,
   newCache,
@@ -23,6 +24,7 @@ module Prosumma.Cache (
 import Prosumma.Util
 import Prosumma.WLock
 import RIO
+import RIO.Lens
 import RIO.List (sortOn)
 import RIO.Time
 
@@ -82,35 +84,39 @@ setReap cache interval reap = do
 data Outcome = Cached | Fetched deriving (Eq, Show)
 type Result v = (v, Outcome)
 
--- | Gets an entry from the @Cache@, propagating any exceptions from the underlying fetch function.
+-- | Gets a `Result (Entry v)` from the @Cache@. 
+cacheGetEntry :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result (Entry v))
+cacheGetEntry k cache = do
+  now <- getCurrentTime
+  let wlock = cache^.lockL
+  store <- readWLock wlock
+  case HashMap.lookup k store of
+    Just entry -> do
+      let updatedEntry = entry & accessedL .~ now
+      void $ async $ withWLock_ wlock $ return . HashMap.update (const $ Just updatedEntry) k
+      return (updatedEntry, Cached)
+    Nothing -> withWLock wlock $ \store -> do
+      case HashMap.lookup k store of
+        Just entry -> do
+          let updatedEntry = entry & accessedL .~ now
+          let newStore = HashMap.update (const $ Just updatedEntry) k store 
+          return (newStore, (updatedEntry, Cached))
+        Nothing -> do
+          v <- liftIO $ (cache^.fetchL) k
+          let entry = newEntry now v 
+          let newStore = HashMap.insert k entry store
+          return (newStore, (entry, Fetched))
+
+-- | Gets an `Result v` from the @Cache@, propagating any exceptions from the underlying fetch function.
 --
 -- If you don't want exceptions from the underlying fetch function, then you can easily wrap this
 -- function, e.g.,
 -- > hushGetResult k cache = flip catchAny (return . Nothing) $ Just <$> cacheGetResult k cache
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v) 
-cacheGetResult k cache = do
-  now <- getCurrentTime
-  let wlock = cache^.lockL
-  store <- readWLock wlock 
-  case HashMap.lookup k store of
-    Just entry -> do
-      void $ async $ withWLock_ wlock $ return . updateAccessed now entry
-      return (entry^.valueL, Cached)
-    Nothing -> withWLock wlock $ \store -> do
-      case HashMap.lookup k store of 
-        Just entry -> do
-          let newStore = updateAccessed now entry store 
-          return (newStore, (entry^.valueL, Fetched)) 
-        Nothing -> do
-          v <- liftIO $ (cache^.fetchL) k
-          let entry = newEntry now v
-          let newStore = HashMap.insert k entry store
-          return (newStore, (v, Fetched))
-  where
-    updateAccessed now entry = HashMap.update (const $ Just $ entry & accessedL .~ now) k
+cacheGetResult k cache = cacheGetEntry k cache <&> over _1 value 
 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m v 
-cacheGet k cache = fst <$> cacheGetResult k cache 
+cacheGet k cache = cacheGetResult k cache <&> fst
 
 cacheDelete :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m ()
 cacheDelete k cache = withWLock_ (cache^.lockL) $ return . HashMap.delete k
