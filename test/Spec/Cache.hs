@@ -6,6 +6,7 @@ module Spec.Cache (
 
 import Prosumma.Cache
 import RIO
+import RIO.Lens
 import System.Random
 import Test.Hspec
 
@@ -92,3 +93,8 @@ testCache = do
         threadDelay 150_000
         result3 <- cacheGetResult "one" cache
         result3 `shouldBe` (1, Fetched)
+  describe "accesses" $ do
+    it "counts the number of times an entry has been accessed" $ do
+      cache <- newCache get mempty
+      result <- cacheGetEntry "one" cache
+      (result^._1.accessesL) `shouldBe` 1

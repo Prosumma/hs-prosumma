@@ -8,6 +8,7 @@ module Prosumma.Cache (
   Result,
   Store,
   accessedL,
+  accessesL,
   addedL,
   cacheDelete,
   cacheGet,
@@ -16,7 +17,6 @@ module Prosumma.Cache (
   cacheGetMaybe,
   cacheGetResult,
   cachePut,
-  hitsL,
   newCache,
   setReap,
   valueL,
@@ -39,7 +39,7 @@ type Fetch k v = k -> IO v
 data Entry v = Entry {
   added    :: !UTCTime,
   accessed :: !UTCTime,
-  hits     :: !Word,
+  accesses :: !Word,
   value    :: !v
 } deriving (Eq, Ord, Show)
 
@@ -91,7 +91,7 @@ type Result v = (v, Outcome)
 cacheGetEntry :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result (Entry v))
 cacheGetEntry k cache = do
   now <- getCurrentTime
-  let updateEntry entry = entry & accessedL .~ now & hitsL %~ (+1)
+  let updateEntry entry = entry & accessedL .~ now & accessesL %~ (+1)
   let wlock = cache.lock
   store <- readWLock wlock
   case HashMap.lookup k store of
@@ -107,7 +107,7 @@ cacheGetEntry k cache = do
           return (newStore, (updatedEntry, Cached))
         Nothing -> do
           v <- liftIO $ cache.fetch k
-          let entry = newEntry now v & hitsL %~ (+1)
+          let entry = newEntry now v & accessesL %~ (+1)
           let newStore = HashMap.insert k entry store
           return (newStore, (entry, Fetched))
 
