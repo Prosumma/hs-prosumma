@@ -88,28 +88,29 @@ type Result v = (v, Outcome)
 -- If you don't want exceptions from the underlying fetch function, then you can easily wrap this
 -- function, e.g.,
 -- > hushGetResult k cache = flip catchAny (return . Nothing) $ Just <$> cacheGetResult k cache
-cacheGetResult :: (Hashable k, Show k, MonadUnliftIO m) => k -> Cache k v -> m (Result v) 
+cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v) 
 cacheGetResult k cache = do
   now <- getCurrentTime
   let wlock = cache^.lockL
   store <- readWLock wlock 
   case HashMap.lookup k store of
     Just entry -> do
-      void $ async $ withWLock_ wlock $ \store -> return $ HashMap.update (const $ Just $ entry & accessedL .~ now) k store 
+      void $ async $ withWLock_ wlock $ return . updateAccessed now entry
       return $ (entry^.valueL, Cached)
     Nothing -> withWLock wlock $ \store -> do
       case HashMap.lookup k store of 
         Just entry -> do
-          let newStore = HashMap.update (const $ Just $ entry & accessedL .~ now) k store
+          let newStore = updateAccessed now entry store 
           return (newStore, (entry^.valueL, Fetched)) 
         Nothing -> do
-          liftIO $ putStrLn $ "Creating new cache entry for key " ++ show k
           v <- liftIO $ (cache^.fetchL) k
           let entry = newEntry now v
           let newStore = HashMap.insert k entry store
           return (newStore, (v, Fetched))
+  where
+    updateAccessed now entry = HashMap.update (const $ Just $ entry & accessedL .~ now) k
 
-cacheGet :: (Hashable k, Show k, MonadUnliftIO m) => k -> Cache k v -> m v 
+cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m v 
 cacheGet k cache = fst <$> cacheGetResult k cache 
 
 cacheDelete :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m ()
