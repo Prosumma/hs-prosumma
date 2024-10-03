@@ -61,7 +61,7 @@ hush = eitherToMaybe
 addL :: LensRules
 addL = addSuffix "L" 
 
-addSuffix :: String -> LensRules
+addSuffix ::  String -> LensRules
 addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
   where
     suffixFieldNamer :: String -> FieldNamer
@@ -71,9 +71,13 @@ addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
       -- This helps disambiguate if DuplicateRecordFields is
       -- also used in the same module.
       let cls = "Lens" ++ capitalize fieldPart ++ suffix 
-      return (MethodName (mkName cls) (mkName (fieldPart ++ suffix)))
+      return (MethodName (mkName cls) (mkName (stripUnderscore fieldPart ++ suffix)))
     capitalize [] = []
     capitalize (c:cs) = toUpper c : cs
+    stripUnderscore [] = []
+    stripUnderscore s@(c:cs)
+      | c == '_' = cs
+      | otherwise = s 
 
 makeLensesL :: Name -> DecsQ
 makeLensesL = makeLensesWith addL

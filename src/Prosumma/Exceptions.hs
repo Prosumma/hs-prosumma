@@ -9,6 +9,7 @@ module Prosumma.Exceptions (
   eitherThrowError,
   eitherThrowIO,
   eitherThrowM,
+  isException,
   matchAll,
   matchException,
   maybeThrowError,
@@ -17,12 +18,15 @@ module Prosumma.Exceptions (
   throwMatch,
   throwOnHttpStatusError,
   throwOnHttpStatusOutsideRange,
-  throwWhen
+  throwWhen,
 ) where
 
 import Control.Monad.Error.Class
 import Data.Generics.Product.Fields
 import RIO
+
+isException :: forall e. Exception e => Proxy e -> SomeException -> Bool
+isException _ ex = isJust (fromException ex :: Maybe e)
 
 type MatchException original matched = original -> Either matched original
 type HelpMatchException original matched = matched -> MatchException original matched
