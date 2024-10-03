@@ -35,7 +35,6 @@ library
       Prosumma.PG
       Prosumma.PG.QueryRunner
       Prosumma.Push
-      Prosumma.RWLock
       Prosumma.Servant
       Prosumma.SQLite
       Prosumma.SQLite.QueryRunner
@@ -44,6 +43,7 @@ library
       Prosumma.Types
       Prosumma.Util
       Prosumma.Util.Environment
+      Prosumma.WLock
   other-modules:
       Paths_prosumma
   hs-source-dirs:
