@@ -1,4 +1,4 @@
-{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE LambdaCase, NumericUnderscores #-}
 
 module Spec.Cache (
   testCache
@@ -50,6 +50,11 @@ testCache = do
       let threadCount = [1..100] :: [Int]
       values <- forConcurrently threadCount $ const getRandom
       values `shouldSatisfy` allEqual
+  describe "cacheGetMaybe" $ do
+    it "catches exceptions and returns Maybe" $ do
+      cache <- newCache get mempty
+      result <- cacheGetMaybe "exception" cache
+      result `shouldBe` Nothing 
   describe "cachePut" $ do
     it "puts an item manually into the cache" $ do
       cache <- newCache get mempty

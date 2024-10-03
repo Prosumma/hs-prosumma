@@ -11,7 +11,9 @@ module Prosumma.Cache (
   addedL,
   cacheDelete,
   cacheGet,
+  cacheGetEither,
   cacheGetEntry,
+  cacheGetMaybe,
   cacheGetResult,
   cachePut,
   newCache,
@@ -21,6 +23,7 @@ module Prosumma.Cache (
   withTTLBy,
 ) where
 
+import Control.Composition
 import Prosumma.Util
 import Prosumma.WLock
 import RIO
@@ -84,7 +87,7 @@ setReap cache interval reap = do
 data Outcome = Cached | Fetched deriving (Eq, Show)
 type Result v = (v, Outcome)
 
--- | Gets a `Result (Entry v)` from the @Cache@. 
+-- | Gets a `Result (Entry v)` from the @Cache@, propagating any exceptions for the underlying fetch function.
 cacheGetEntry :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result (Entry v))
 cacheGetEntry k cache = do
   now <- getCurrentTime
@@ -108,15 +111,17 @@ cacheGetEntry k cache = do
           return (newStore, (entry, Fetched))
 
 -- | Gets an `Result v` from the @Cache@, propagating any exceptions from the underlying fetch function.
---
--- If you don't want exceptions from the underlying fetch function, then you can easily wrap this
--- function, e.g.,
--- > hushGetResult k cache = flip catchAny (return . Nothing) $ Just <$> cacheGetResult k cache
 cacheGetResult :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result v) 
 cacheGetResult k cache = cacheGetEntry k cache <&> over _1 value 
 
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m v 
 cacheGet k cache = cacheGetResult k cache <&> fst
+
+cacheGetEither :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Either SomeException v)
+cacheGetEither k cache = catchAny (cacheGet k cache <&> Right) (return . Left) 
+
+cacheGetMaybe :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Maybe v)
+cacheGetMaybe k cache = hush <$> cacheGetEither k cache 
 
 cacheDelete :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m ()
 cacheDelete k cache = withWLock_ (cache^.lockL) $ return . HashMap.delete k
