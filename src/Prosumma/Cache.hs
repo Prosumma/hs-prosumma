@@ -39,7 +39,7 @@ type Fetch k v = k -> IO v
 data Entry v = Entry {
   added    :: !UTCTime,
   accessed :: !UTCTime,
-  hits     :: !Integer,
+  hits     :: !Word,
   value    :: !v
 } deriving (Eq, Ord, Show)
 
