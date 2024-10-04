@@ -29,7 +29,6 @@ module Prosumma.Cache (
   withTTLBy,
 ) where
 
-import Control.Composition
 import Prosumma.Util
 import Prosumma.WLock
 import RIO
