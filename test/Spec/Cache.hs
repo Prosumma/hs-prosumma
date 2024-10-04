@@ -30,6 +30,9 @@ allEqual :: Eq a => [a] -> Bool
 allEqual [] = True
 allEqual (x:xs) = all (==x) xs
 
+withReapedCache :: MonadUnliftIO m => Cache k v -> Word -> Reap m k v -> m a -> m a
+withReapedCache cache interval reap action = flip finally (setReap cache 0 Nothing) $ setReap cache interval (Just reap) >> action
+
 testCache :: Spec
 testCache = do
   describe "cacheGetResult" $ do
@@ -76,16 +79,14 @@ testCache = do
       void $ cacheGet "one" cache
       void $ cacheGet "two" cache
       void $ cacheGet "three" cache
-      flip finally (setReap cache 0 Nothing) $ do
-        setReap cache 50_000 (Just $ withSizeLimitBy accessed 2)
+      withReapedCache cache 50_000 (withSizeLimitBy accessed 2) $ do
         threadDelay 60_000
         result <- cacheGetResult "one" cache
         result `shouldBe` (1, Fetched)
   describe "withTTLBy" $ do
     it "reaps an item if it has expired" $ do
       cache <- newCache get mempty
-      flip finally (setReap cache 0 Nothing) $ do
-        setReap cache 50_000 (Just $ withTTLBy accessed 0.1)
+      withReapedCache cache 50_000 (withTTLBy accessed 0.1) $ do
         result1 <- cacheGetResult "one" cache
         result1 `shouldBe` (1, Fetched)
         result2 <- cacheGetResult "one" cache
@@ -98,3 +99,23 @@ testCache = do
       cache <- newCache get mempty
       result <- cacheGetEntry "one" cache
       (result^._1.accessesL) `shouldBe` 1
+      result <- cacheGetEntry "one" cache
+      (result^._1.accessesL) `shouldBe` 2 
+  describe "cacheSize" $ do
+    it "gets the number of entries in the cache" $ do
+      cache <- newCache get mempty
+      void $ cacheGet "one" cache
+      void $ cacheGet "two" cache
+      void $ cacheGet "three" cache
+      size <- cacheSize cache
+      size `shouldBe` 3 
+  describe "cachePeekEntry" $ do
+    it "gets an entry from the cache if one is present" $ do
+      cache <- newCache get mempty
+      void $ cacheGet "one" cache
+      entry <- cachePeekEntry "one" cache
+      entry `shouldSatisfy` isJust
+    it "returns Nothing if an entry is not present" $ do
+      cache <- newCache get mempty
+      entry <- cachePeekEntry "one" cache
+      entry `shouldSatisfy` isNothing
