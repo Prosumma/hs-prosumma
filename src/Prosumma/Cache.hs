@@ -101,7 +101,7 @@ newReapedCache fetch init interval reap = do
 -- `Nothing` is returned. Non-blocking.
 cachePeekEntry :: (Hashable k, MonadIO m) => k -> Cache k v -> m (Maybe (Entry v))
 cachePeekEntry k cache = HashMap.lookup k <$> readWLock cache.lock 
-  
+
 -- | Gets a `Result (Entry v)` from the @Cache@, propagating any exceptions for the underlying fetch function.
 --
 -- This function is non-blocking for cached entries and blocking in all other cases.
@@ -139,7 +139,6 @@ cacheGetResult k cache = cacheGetEntry k cache <&> over _1 value
 -- This function is non-blocking for cached entries and blocking in all other cases.
 cacheGet :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m v 
 cacheGet k cache = cacheGetResult k cache <&> fst
-
 
 -- | Gets a value from the @Cache@. If an exception of type `e` is raised, it is stored in `Left`.
 -- All other exceptions propagate.
