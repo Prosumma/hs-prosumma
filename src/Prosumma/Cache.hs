@@ -108,7 +108,7 @@ cachePeekEntry k cache = HashMap.lookup k <$> readWLock cache.lock
 cacheGetEntry :: (Hashable k, MonadUnliftIO m) => k -> Cache k v -> m (Result (Entry v))
 cacheGetEntry k cache = do
   now <- getCurrentTime
-  let updateEntry entry = entry & accessedL .~ now & accessesL %~ (+1)
+  let updateEntry entry = entry & accessedL .~ max now entry.accessed & accessesL %~ (+1)
   let wlock = cache.lock
   store <- readWLock wlock
   case HashMap.lookup k store of
