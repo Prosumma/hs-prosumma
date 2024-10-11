@@ -23,7 +23,7 @@ get "one" = return 1
 get "two" = return 2
 get "three" = return 3
 get "four" = return 4
-get "random" = randomRIO (1, 100000)
+get "random" = randomRIO (1, 100_000)
 get _ = throwIO MissingValueException
 
 allEqual :: Eq a => [a] -> Bool
@@ -53,6 +53,7 @@ testCache = do
       let getRandom = cacheGet "random" cache
       let threadCount = [1..100] :: [Int]
       values <- forConcurrently threadCount $ const getRandom
+      length values `shouldBe` 100
       values `shouldSatisfy` allEqual
   describe "cacheGetMaybe" $ do
     it "catches exceptions and returns Maybe" $ do
