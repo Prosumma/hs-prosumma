@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, OverloadedLabels, RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances #-}
 
 {-|
 Module: Prosumma.AWS.DynamoDB
@@ -74,7 +74,7 @@ import Amazonka hiding (query)
 import Amazonka.DynamoDB
 import Control.Applicative
 import Control.Monad.Error.Class
-import Data.Generics.Product
+import Data.Generics.Labels ()
 import Data.Either.Extra
 import Data.Typeable (cast)
 import Data.UUID (UUID)
@@ -509,7 +509,7 @@ key =: value = (key, toAttributeValue value)
 
 putItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m ()
 putItem' table item = do
-  let request = newPutItem table & (field @"item") .~ item
+  let request = newPutItem table & #item .~ item
   void $ sendAWSThrowOnStatus request
 
 putItem :: (ToTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> a -> m ()
@@ -517,9 +517,9 @@ putItem table = putItem' table . toTableItem
 
 getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m (Maybe a) 
 getItem' table item = do
-  let request = newGetItem table & (field @"key") .~ item  
+  let request = newGetItem table & #key .~ item  
   response <- sendAWSThrowOnStatus request
-  case fromTableItem <$> response^.(field @"item") of
+  case fromTableItem <$> response ^. #item of
     Just (Right a) -> return $ Just a
     Nothing -> return Nothing
     Just (Left e) -> throwM e
@@ -533,9 +533,9 @@ scanWithFilter
   :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m)
   => Text -> Maybe Text -> m [a]
 scanWithFilter table filter = do
-  let request = newScan table & (field @"filterExpression") .~ filter
+  let request = newScan table & #filterExpression .~ filter
   response <- sendAWSThrowOnStatus request
-  case partitionEithers . map fromTableItem <$> response^.(field @"items") of
+  case partitionEithers . map fromTableItem <$> response ^. #items of
     Just (errors, items) -> do
       forM_ errors (logErrorS logSource . displayShow)
       return items

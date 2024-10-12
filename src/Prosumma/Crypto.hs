@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, OverloadedLabels, TypeApplications #-}
 
 module Prosumma.Crypto (
   CryptoException(..),
@@ -15,7 +15,7 @@ import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
 import Crypto.Random
-import Data.Generics.Product
+import Data.Generics.Labels ()
 import Data.ByteArray (convert)
 import Data.String.Conversions
 import Prosumma.AWS
@@ -59,9 +59,9 @@ encryptMessageWithMasterKey
   => Text -> ByteString -> m ByteString
 encryptMessageWithMasterKey masterKeyArn plaintext = do 
   resp <- sendAWSThrowOnStatus $ newGenerateDataKey masterKeyArn
-    & (field @"keySpec") ?~ DataKeySpec_AES_256 
-  let password = unBase64 $ fromSensitive $ resp^.(field @"plaintext")
-  let ciphertextBlob = unBase64 $ resp^.(field @"ciphertextBlob")
+    & #keySpec ?~ DataKeySpec_AES_256 
+  let password = unBase64 $ fromSensitive $ resp ^. #plaintext
+  let ciphertextBlob = unBase64 $ resp ^. #ciphertextBlob 
   iv <- generateIV
   encrypted <- combineMessageWithKeyAndIV EncryptionException password iv plaintext
   return $ ciphertextBlob <> convert iv <> encrypted
@@ -78,7 +78,7 @@ decryptMessage ciphertext = do
   when (ByteString.length ciphertext <= keyLength) $ throwIO DecryptionException
   let (encryptedKey, rest) = ByteString.splitAt keyLength ciphertext
   resp <- sendAWSThrowOnStatus $ newDecrypt encryptedKey 
-  case unBase64 . fromSensitive <$> resp^.(field @"plaintext") of
+  case unBase64 . fromSensitive <$> resp ^. #plaintext of
     Nothing -> throwIO DecryptionException
     Just decryptedKey -> do 
       when (ByteString.length rest <= ivLength) $ throwIO DecryptionException
