@@ -10,8 +10,9 @@ module Prosumma.WLock (
 
 import RIO
 
+-- | A "write lock" which locks only writes but not reads.
 data WLock a = WLock {
-  ref :: !(IORef a),
+  ref  :: !(IORef a),
   lock :: !(MVar ())
 }
 
