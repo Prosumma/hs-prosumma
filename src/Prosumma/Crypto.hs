@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, OverloadedLabels, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, OverloadedLabels #-}
 
 module Prosumma.Crypto (
   CryptoException(..),
