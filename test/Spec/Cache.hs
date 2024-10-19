@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, NumericUnderscores #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 module Spec.Cache (
   testCache
