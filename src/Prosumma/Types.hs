@@ -68,8 +68,10 @@ instance Show Language where
 languageRegex :: Text
 languageRegex = "^[a-z]{2}$"
 
-instance Textual Language where
+instance FromText Language where
   fromText = ifMatchTextual languageRegex Language'
+
+instance ToText Language where
   toText (Language' language) = language
 
 instance IsString Language where
@@ -107,8 +109,10 @@ instance Show Region where
 regionRegex :: Text
 regionRegex = "^[A-Z]{2}$"
 
-instance Textual Region where
+instance FromText Region where
   fromText = ifMatchTextual regionRegex Region'
+
+instance ToText Region where
   toText (Region' region) = region
 
 instance IsString Region where
@@ -150,13 +154,15 @@ localizationRegex :: Text
 -- TDFA doesn't support non-capture groups
 localizationRegex = "^([a-z]{2})(-([A-Z]{2}))?$"
 
-instance Textual Localization where
+instance FromText Localization where
   fromText text = toLocalization' $ text =~~ localizationRegex
     where
       toLocalization' :: Maybe [[Text]] -> Maybe Localization
       toLocalization' (Just [[_match, language, "", ""]]) = Just $ Localization (Language' language) Nothing
       toLocalization' (Just [[_match, language, _optional, region]]) = Just $ Localization (Language' language) (Just (Region' region))
       toLocalization' _nomatch = Nothing
+
+instance ToText Localization where
   toText (Localization (Language' language) (Just (Region' region))) = Text.concat [language, "-", region]
   toText (Localization (Language' language) Nothing) = language
 
@@ -210,8 +216,10 @@ pattern Name name <- Name' name
 instance Show Name where
   show = showTextual
 
-instance Textual Name where
+instance FromText Name where
   fromText = ifMatchTextual nameRegex Name'
+
+instance ToText Name where
   toText (Name' name) = name
 
 instance IsString Name where
@@ -266,8 +274,10 @@ pattern DotName name <- DotName' name
 instance Show DotName where
   show = showTextual
 
-instance Textual DotName where
+instance FromText DotName where
   fromText = ifMatchTextual dotNameRegex DotName'
+
+instance ToText DotName where
   toText (DotName' name) = name
 
 instance IsString DotName where
@@ -314,8 +324,10 @@ ipFromSockAddr (SockAddrInet _ hostAddress) = let (t1, t2, t3, t4) = hostAddress
 ipFromSockAddr (SockAddrInet6 _ _ hostAddress _) = let (t1, t2, t3, t4, t5, t6, t7, t8) = hostAddress6ToTuple hostAddress in Just $ IP.ipv6 t1 t2 t3 t4 t5 t6 t7 t8
 ipFromSockAddr _ = Nothing
 
-instance Textual IP where
+instance FromText IP where
   fromText = IP.decode
+
+instance ToText IP where
   toText = IP.encode
 
 instance FromField IP where
@@ -332,11 +344,13 @@ pattern IANATimeZone tz <- IANATimeZone' tz
 ianaTimeZoneRegex :: Text
 ianaTimeZoneRegex = "^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$"
 
-instance Textual IANATimeZone where
-  toText (IANATimeZone' text) = text
+instance FromText IANATimeZone where
   fromText text = if text =~ ianaTimeZoneRegex
     then return $ IANATimeZone' text
     else Nothing
+  
+instance ToText IANATimeZone where
+  toText (IANATimeZone' text) = text
 
 instance IsString IANATimeZone where
   fromString = fromStringTextual "IANATimeZone"
@@ -373,8 +387,10 @@ instance ToAttributeValue IANATimeZone where
 
 data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
-instance Textual OS where
+instance FromText OS where
   fromText = readMaybe . ("OS" ++) . S.toString
+
+instance ToText OS where
   toText = S.toStrictText . drop 2 . show
 
 instance IsString OS where
@@ -397,8 +413,10 @@ data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show, Gen
 instance IsString PushSystem where
   fromString = fromStringTextual "PushSystem"
 
-instance Textual PushSystem where
+instance FromText PushSystem where
   fromText = readMaybe . S.toString
+
+instance ToText PushSystem where
   toText = S.toStrictText . show
 
 instance FromField PushSystem where

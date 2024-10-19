@@ -8,12 +8,14 @@ import RIO hiding (Reader)
 import RIO.Text
 import Text.Printf
 
-instance Textual LogLevel where
+instance FromText LogLevel where
   fromText "Debug" = Just LevelDebug
   fromText "Info" = Just LevelInfo
   fromText "Warn" = Just LevelWarn
   fromText "Error" = Just LevelError
   fromText text = Just $ LevelOther text
+  
+instance ToText LogLevel where
   toText LevelDebug = "Debug"
   toText LevelInfo = "Info"
   toText LevelWarn = "Warn"

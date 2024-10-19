@@ -8,7 +8,8 @@ module Prosumma.Textual (
   toFieldTextual,
   toJSONTextual,
   unsafeFromText,
-  Textual(..)
+  FromText(..),
+  ToText(..),
 ) where
 
 import Data.Aeson.Types
@@ -25,28 +26,40 @@ import RIO.Text
 import Text.Printf
 import Text.Regex.TDFA
 
-class Textual a where
+class FromText a where
   fromText :: Text -> Maybe a
+  
+class ToText a where
   toText :: a -> Text
 
-instance Textual Text where
-  fromText = Just 
+instance FromText Text where
+  fromText = Just
+  
+instance ToText Text where
   toText = id
 
-instance Textual ByteString where
-  fromText = Just . convertString 
+instance FromText ByteString where
+  fromText = Just . convertString
+
+instance ToText ByteString where
   toText = convertString
-
-instance Textual Integer where
-  fromText = fromTextReader decimal 
+  
+instance FromText Int where
+  fromText = fromTextReader decimal
+  
+instance ToText Int where
   toText = pack . show
 
-instance Textual Int where
-  fromText = fromTextReader decimal 
+instance FromText Integer where
+  fromText = fromTextReader decimal
+  
+instance ToText Integer where
   toText = pack . show
 
-instance Textual Double where
-  fromText = fromTextReader double 
+instance FromText Double where
+  fromText = fromTextReader double
+
+instance ToText Double where
   toText = pack . show
 
 -- | Unsafely converts from `Text` to a `Textual`.
@@ -54,7 +67,7 @@ instance Textual Double where
 -- Causes a runtime error if conversion is invalid.
 -- Use this only if you're very sure that the `Text` 
 -- is valid for the target `Textual`.
-unsafeFromText :: Textual a => Text -> a
+unsafeFromText :: FromText a => Text -> a
 unsafeFromText = fromJust . fromText
 
 -- | Helper to implement `Textual`'s `fromText`
@@ -72,7 +85,7 @@ ifMatchTextual regex make source = if source =~ regex
 --
 -- > instance FromField Foo where
 -- >  fromField = fromFieldTextual "Foo"
-fromFieldTextual :: (Textual a, Typeable a) => String -> FieldParser a
+fromFieldTextual :: (FromText a, Typeable a) => String -> FieldParser a
 fromFieldTextual name field mdata = do
   text <- fromField field mdata
   case fromText text of
@@ -80,28 +93,28 @@ fromFieldTextual name field mdata = do
     Nothing -> returnError ConversionFailed field $ printf "'%s' is not a valid %s." text name 
 
 -- | Helper to implement `ToField`'s `toField` for a `Textual`.
-toFieldTextual :: Textual a => a -> Action
+toFieldTextual :: ToText a => a -> Action
 toFieldTextual = toField . toText
 
 -- | Helper to parse from JSON to a `Textual` instance.
 --
 -- > instance FromJSON Foo where
 -- >  parseJSON = parseJSONTextual "Foo"
-parseJSONTextual :: Textual a => String -> Value -> Parser a
+parseJSONTextual :: FromText a => String -> Value -> Parser a
 parseJSONTextual name (String text) = case fromText text of
   Just thing -> return thing
   Nothing -> fail $ printf "'%s' is not a valid %s." text name
 parseJSONTextual name invalid = typeMismatch name invalid
 
 -- | Helper to convert a `Textual` to JSON.
-toJSONTextual :: Textual a => a -> Value 
+toJSONTextual :: ToText a => a -> Value 
 toJSONTextual = toJSON . toText 
 
 -- | Helper to implement `IsString`'s `fromString` for a `Textual`.
 --
 -- > instance IsString Foo where
 -- >   fromString = fromStringTextual "Foo"
-fromStringTextual :: Textual a => String -> String -> a
+fromStringTextual :: FromText a => String -> String -> a
 fromStringTextual name string = case fromText (fromString string) of
   Just thing -> thing
   Nothing -> error $ printf "'%s' is not a valid %s." string name
@@ -110,11 +123,11 @@ fromStringTextual name string = case fromText (fromString string) of
 --
 -- > instance Show Foo where
 -- >   show = showTextual
-showTextual :: Textual a => a -> String
+showTextual :: ToText a => a -> String
 showTextual = convertString . toText
 
 -- | Implements `parseUrlPiece` in terms of 'Textual'. 
-parseUrlPieceTextual :: Textual a => Text -> Text -> Either Text a
+parseUrlPieceTextual :: FromText a => Text -> Text -> Either Text a
 parseUrlPieceTextual name text = maybeToEither err $ fromText text
   where
     err = convertString $ format ("'" % stext % "' is not a valid " % stext % ".") text name

@@ -8,8 +8,10 @@ import Data.Tagged
 import Prosumma.Textual
 import RIO
 
-instance Textual a => Textual (Tagged s a) where
+instance FromText a => FromText (Tagged s a) where
   fromText text = Tagged <$> fromText text 
+
+instance ToText a => ToText (Tagged s a) where
   toText (Tagged a) = toText a
 
 instance ToField a => ToField (Tagged s a) where
