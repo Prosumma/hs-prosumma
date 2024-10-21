@@ -344,6 +344,9 @@ pattern IANATimeZone tz <- IANATimeZone' tz
 ianaTimeZoneRegex :: Text
 ianaTimeZoneRegex = "^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$"
 
+instance Default IANATimeZone where
+  def = "Etc/UTC"
+
 instance FromText IANATimeZone where
   fromText text = if text =~ ianaTimeZoneRegex
     then return $ IANATimeZone' text
