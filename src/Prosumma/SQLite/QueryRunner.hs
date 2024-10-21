@@ -17,8 +17,8 @@ data SQLQuery where
 
 -- | A type which can invoke SQL queries.
 class QueryRunner c where
-  execute :: (MonadReader env m, MonadUnliftIO m) => SQLQuery -> c -> m () 
-  query :: (MonadReader env m, MonadUnliftIO m, FromRow r) => SQLQuery -> c -> m [r]
+  execute :: (MonadReader env m, MonadIO m) => SQLQuery -> c -> m () 
+  query :: (MonadReader env m, MonadIO m, FromRow r) => SQLQuery -> c -> m [r]
   setTrace :: (MonadReader env m, HasLogFunc env, MonadUnliftIO m) => c -> Maybe (Text -> m ()) -> m ()
 
 instance QueryRunner Connection where

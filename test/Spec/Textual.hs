@@ -13,8 +13,10 @@ newtype Foo = Foo Text deriving (Eq, Show)
 fooRegex :: Text
 fooRegex = "^[a-z]{2,3}$"
 
-instance Textual Foo where
+instance FromText Foo where
   fromText = ifMatchTextual fooRegex Foo
+
+instance ToText Foo where
   toText (Foo foo) = foo
 
 instance IsString Foo where
