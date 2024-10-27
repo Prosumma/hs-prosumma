@@ -1,4 +1,4 @@
-{-# LANGUAGE DuplicateRecordFields, TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields, TemplateHaskell #-}
 
 module Prosumma.Push (
   _ContentAvailable,
@@ -18,9 +18,37 @@ import Control.Lens (makePrisms)
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Default
+import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.ToField
 import Prosumma.Aeson
 import Prosumma.Util
+import Prosumma.Textual
 import RIO
+
+import qualified Data.String.Conversions.Monomorphic as S
+
+data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
+
+instance IsString PushSystem where
+  fromString = fromStringTextual "PushSystem"
+
+instance FromText PushSystem where
+  fromText = readMaybe . S.toString
+
+instance ToText PushSystem where
+  toText = S.toStrictText . show
+
+instance FromField PushSystem where
+  fromField = fromFieldTextual "PushSystem"
+
+instance ToField PushSystem where
+  toField = toFieldTextual
+
+instance ToJSON PushSystem where
+  toJSON = toJSONTextual
+
+instance FromJSON PushSystem where
+  parseJSON = parseJSONTextual "PushSystem"
 
 data Message = ContentAvailable | Message !Text | TitledMessage !Text !Text deriving (Eq, Show)
 
@@ -55,6 +83,7 @@ data Push = Push {
   badge :: !MaybeInt,
   -- | APNS only, ignored by FCM
   category :: !MaybeText,
+  -- | Common to both
   customData :: !Object
 } deriving (Eq, Show)
 

@@ -10,7 +10,6 @@ module Prosumma.Types (
   Localization(..),
   Name,
   OS(..),
-  PushSystem(..),
   Region,
   ipFromSockAddr,
   languageL,
@@ -98,6 +97,8 @@ instance ToHttpApiData Language where
 instance FromHttpApiData Language where
   parseUrlPiece = parseUrlPieceTextual "Language"
 
+-- | Region code.
+-- This is an ISO 3166-1 alpha-2 region code.
 newtype Region = Region' Text deriving (Eq, Ord, Generic, Hashable, Data, Typeable, NFData)
 
 pattern Region :: Text -> Region
@@ -136,6 +137,9 @@ instance ToHttpApiData Region where
 instance FromHttpApiData Region where
   parseUrlPiece = parseUrlPieceTextual "Region"
 
+-- | IETF BCP 47 language tag
+--
+-- I call this a "Localization".
 data Localization = Localization {
   language :: !Language,
   region :: !(Maybe Region)
@@ -411,25 +415,3 @@ instance ToJSON OS where
 instance FromJSON OS where
   parseJSON = parseJSONTextual "OS"
 
-data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
-
-instance IsString PushSystem where
-  fromString = fromStringTextual "PushSystem"
-
-instance FromText PushSystem where
-  fromText = readMaybe . S.toString
-
-instance ToText PushSystem where
-  toText = S.toStrictText . show
-
-instance FromField PushSystem where
-  fromField = fromFieldTextual "PushSystem"
-
-instance ToField PushSystem where
-  toField = toFieldTextual
-
-instance ToJSON PushSystem where
-  toJSON = toJSONTextual
-
-instance FromJSON PushSystem where
-  parseJSON = parseJSONTextual "PushSystem"
