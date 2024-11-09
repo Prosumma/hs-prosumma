@@ -1,114 +1,37 @@
 {-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields, TemplateHaskell #-}
 
 module Prosumma.Push (
-  _ContentAvailable,
-  _Message,
-  _TitledMessage,
-  Message(..),
-  Push(..),
-  badgeL,
-  categoryL,
-  customDataL,
-  messageL,
-  newAlert,
-  newPush
+  
 ) where
 
-import Control.Lens (makePrisms)
 import Data.Aeson
-import Data.Aeson.Types
-import Data.Default
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
-import Prosumma.Aeson
-import Prosumma.Util
 import Prosumma.Textual
 import RIO
 
 import qualified Data.String.Conversions.Monomorphic as S
 
-data PushSystem = SNS | APS | FCM | WNS deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
+data PushFormat = APS | FCM deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
-instance IsString PushSystem where
-  fromString = fromStringTextual "PushSystem"
+instance IsString PushFormat where
+  fromString = fromStringTextual "PushFormat"
 
-instance FromText PushSystem where
+instance FromText PushFormat where
   fromText = readMaybe . S.toString
 
-instance ToText PushSystem where
+instance ToText PushFormat where
   toText = S.toStrictText . show
 
-instance FromField PushSystem where
-  fromField = fromFieldTextual "PushSystem"
+instance FromField PushFormat where
+  fromField = fromFieldTextual "PushFormat"
 
-instance ToField PushSystem where
+instance ToField PushFormat where
   toField = toFieldTextual
 
-instance ToJSON PushSystem where
+instance ToJSON PushFormat where
   toJSON = toJSONTextual
 
-instance FromJSON PushSystem where
-  parseJSON = parseJSONTextual "PushSystem"
+instance FromJSON PushFormat where
+  parseJSON = parseJSONTextual "PushFormat"
 
-data Message = ContentAvailable | Message !Text | TitledMessage !Text !Text deriving (Eq, Show)
-
-makePrisms ''Message
-
-parseMessage :: Object -> Parser Message
-parseMessage o = do
-  contentAvailable <- fromMaybe False <$> o .:? "content_available"
-  if contentAvailable
-    then return ContentAvailable
-    else do
-      title <- o .:? "title"
-      body <- o .:? "body"
-      case (title, body) of
-        (Just title, Just body) -> return $ TitledMessage title body
-        (Just title, Nothing) -> return $ Message title
-        (Nothing, Just body) -> return $ Message body
-        _ -> fail "Either content_available or title or body must be present."
-
-messageToPairs :: Message -> [Pair]
-messageToPairs ContentAvailable = ["content_available" .= True]
-messageToPairs (Message message) = ["body" .= message]
-messageToPairs (TitledMessage title body) = ["title" .= title, "body" .= body]
-
-type MaybeText = Maybe Text
-type MaybeInt = Maybe Int
-
--- | A cross-platform push notification type
-data Push = Push {
-  message :: !Message,
-  -- | APNS only, ignored by FCM
-  badge :: !MaybeInt,
-  -- | APNS only, ignored by FCM
-  category :: !MaybeText,
-  -- | Common to both
-  customData :: !Object
-} deriving (Eq, Show)
-
-makeLensesL ''Push
-
-instance Default Push where
-  def = Push ContentAvailable Nothing Nothing mempty
-
-newPush :: Message -> Push
-newPush message = def { message } 
-
-newAlert :: Text -> Push
-newAlert = newPush . Message 
-
-instance FromJSON Push where
-  parseJSON = withObject "Push" $ \o -> 
-    Push
-      <$> parseMessage o
-      <*> o .:? "badge"
-      <*> o .:? "category"
-      <*> (fromMaybe mempty <$> o .:? "data")
-
-instance ToJSON Push where
-  toJSON Push{..} = stripJSON (ofAll InBoth) $ object $ messageToPairs message <> [
-      "badge" .= badge,
-      "category" .= category,
-      "data" .= customData
-    ]

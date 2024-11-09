@@ -33,6 +33,9 @@ import qualified RIO.Text as T
 
 class ToJSONPairs a where
   toJSONPairs :: a -> [Pair]
+  
+instance ToJSONPairs () where
+  toJSONPairs _ = []
 
 class FromJSONObject a where
   parseJSONObject :: Object -> Parser a
