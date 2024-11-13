@@ -537,7 +537,7 @@ scanWithFilter table filter = do
   response <- sendAWSThrowOnStatus request
   case partitionEithers . map fromTableItem <$> response ^. #items of
     Just (errors, items) -> do
-      forM_ errors (logErrorS logSource . displayShow)
+      for_ errors (logErrorS logSource . displayShow)
       return items
     Nothing -> return [] 
 

@@ -168,7 +168,7 @@ cachePut k v cache = do
   now <- getCurrentTime
   let entry = newEntry now v
   withWLock_ cache.lock $ return . HashMap.insert k entry
-  
+
 cacheSize :: MonadIO m => Cache k v -> m Int
 cacheSize cache = HashMap.size <$> readWLock cache.lock 
 
