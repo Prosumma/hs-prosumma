@@ -414,4 +414,3 @@ instance ToJSON OS where
 
 instance FromJSON OS where
   parseJSON = parseJSONTextual "OS"
-
