@@ -340,6 +340,9 @@ instance FromField IP where
 instance ToField IP where
   toField = toFieldTextual
 
+-- | An IANA time zone identifier
+-- 
+-- Note that IANA time zone identifiers are case-sensitive.
 newtype IANATimeZone = IANATimeZone' Text deriving (Eq, Ord, Show, Generic, Hashable, Data, Typeable, NFData)
 
 pattern IANATimeZone :: Text -> IANATimeZone
@@ -392,7 +395,7 @@ instance ToScalarAttributeValue IANATimeZone
 instance ToAttributeValue IANATimeZone where
   toAttributeValue = toScalarAttributeValue
 
-data OS = OSiOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
+data OS = OSiOS | OSiPhoneOS | OSiPadOS | OSAndroid | OSmacOS | OSWindows deriving (Eq, Ord, Enum, Read, Show, Generic, Hashable, Data, Typeable, NFData)
 
 instance FromText OS where
   fromText = readMaybe . ("OS" ++) . S.toString

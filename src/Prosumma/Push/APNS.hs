@@ -24,7 +24,7 @@ module Prosumma.Push.APNS (
   titleLocArgsL,
   titleLocKeyL,
 ) where
-  
+
 import Control.Lens ((?~))
 import Data.Aeson
 import Data.Default
