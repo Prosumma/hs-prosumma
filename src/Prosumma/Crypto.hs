@@ -11,6 +11,7 @@ module Prosumma.Crypto (
 import Amazonka.Data
 import Amazonka.KMS
 import Control.Lens ((?~))
+import Control.Monad.Trans.Resource
 import Crypto.Cipher.AES
 import Crypto.Cipher.Types
 import Crypto.Error
@@ -55,7 +56,7 @@ combineMessageWithKeyAndIV e key iv plaintext = do
     CryptoPassed cipher -> return $ ctrCombine cipher iv plaintext
 
 encryptMessageWithMasterKey
-  :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasAWSEnv env)
+  :: (MonadResource m, MonadThrow m, MonadReader env m, HasAWSEnv env)
   => Text -> ByteString -> m ByteString
 encryptMessageWithMasterKey masterKeyArn plaintext = do 
   resp <- sendAWSThrowOnStatus $ newGenerateDataKey masterKeyArn
@@ -67,12 +68,12 @@ encryptMessageWithMasterKey masterKeyArn plaintext = do
   return $ ciphertextBlob <> convert iv <> encrypted
 
 encryptMessage
-  :: (MonadUnliftIO m, MonadThrow m, MonadReader env m, HasAWSEnv env, HasMasterKeyArn env)
+  :: (MonadResource m, MonadThrow m, MonadReader env m, HasAWSEnv env, HasMasterKeyArn env)
   => ByteString -> m ByteString
 encryptMessage = asks getMasterKeyArn >>=> encryptMessageWithMasterKey 
 
 decryptMessage
-  :: (MonadUnliftIO m, MonadThrow m, HasAWSEnv env, MonadReader env m)
+  :: (MonadResource m, MonadThrow m, HasAWSEnv env, MonadReader env m)
   => ByteString -> m ByteString
 decryptMessage ciphertext = do 
   when (ByteString.length ciphertext <= keyLength) $ throwIO DecryptionException

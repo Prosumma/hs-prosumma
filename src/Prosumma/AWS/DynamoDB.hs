@@ -74,6 +74,7 @@ import Amazonka hiding (query)
 import Amazonka.DynamoDB
 import Control.Applicative
 import Control.Monad.Error.Class
+import Control.Monad.Trans.Resource
 import Data.Generics.Labels ()
 import Data.Either.Extra
 import Data.Typeable (cast)
@@ -507,15 +508,15 @@ infixr 8 =:
 (=:) :: ToAttributeValue a => Text -> a -> (Text, AttributeValue)
 key =: value = (key, toAttributeValue value)
 
-putItem' :: (HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m ()
+putItem' :: (HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> TableItem -> m ()
 putItem' table item = do
   let request = newPutItem table & #item .~ item
   void $ sendAWSThrowOnStatus request
 
-putItem :: (ToTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> a -> m ()
+putItem :: (ToTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> a -> m ()
 putItem table = putItem' table . toTableItem
 
-getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> TableItem -> m (Maybe a) 
+getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> TableItem -> m (Maybe a) 
 getItem' table item = do
   let request = newGetItem table & #key .~ item  
   response <- sendAWSThrowOnStatus request
@@ -525,12 +526,12 @@ getItem' table item = do
     Just (Left e) -> throwM e
 
 getItem 
-  :: (ToTableItem k, FromTableItem a, HasAWSEnv env, MonadReader env m, MonadUnliftIO m, MonadThrow m)
+  :: (ToTableItem k, FromTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m)
   => Text -> k -> m (Maybe a) 
 getItem table = getItem' table . toTableItem
 
 scanWithFilter
-  :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m)
+  :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadResource m, MonadThrow m)
   => Text -> Maybe Text -> m [a]
 scanWithFilter table filter = do
   let request = newScan table & #filterExpression .~ filter
@@ -541,5 +542,5 @@ scanWithFilter table filter = do
       return items
     Nothing -> return [] 
 
-scan :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadUnliftIO m, MonadThrow m) => Text -> m [a]
+scan :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> m [a]
 scan table = scanWithFilter table Nothing

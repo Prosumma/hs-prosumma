@@ -2,8 +2,8 @@
 
 module Prosumma.AWS (
   sendAWS,
-  sendAWSThrowOnStatus,
   sendAWSThrowOnError,
+  sendAWSThrowOnStatus,
   AWS(..),
   Env,
   HasAWSEnv(..)
@@ -11,6 +11,7 @@ module Prosumma.AWS (
 
 import Amazonka
 import Control.Monad.Reader
+import Control.Monad.Trans.Resource
 import Data.Type.Equality
 import Data.Generics.Product.Fields
 import Prosumma.Exceptions
@@ -34,18 +35,18 @@ instance HasLogFunc AWS where
   logFuncL = lens awsLogFunc $ \aws awsLogFunc -> aws{awsLogFunc}
 
 sendAWS
-  :: (MonadUnliftIO m, AWSRequest r, Typeable r, Typeable (AWSResponse r), MonadReader env m, HasAWSEnv env)
+  :: (MonadResource m, AWSRequest r, Typeable r, Typeable (AWSResponse r), MonadReader env m, HasAWSEnv env)
   => r -> m (AWSResponse r)
 sendAWS r = do
   env <- asks getAWSEnv
-  runResourceT $ send env r
+  send env r
 
 sendAWSThrowOnError
-  :: (MonadUnliftIO m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, Exception e, rs ~ AWSResponse rq)
+  :: (MonadResource m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, Exception e, rs ~ AWSResponse rq)
   => (Int -> e) -> rq -> m rs 
 sendAWSThrowOnError mkException = throwOnHttpStatusError mkException <=< sendAWS
 
 sendAWSThrowOnStatus
-  :: (MonadUnliftIO m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, rs ~ AWSResponse rq)
+  :: (MonadResource m, AWSRequest rq, Typeable rq, MonadThrow m, MonadReader env m, HasAWSEnv env, HasField "httpStatus" rs rs Int Int, Typeable rs, rs ~ AWSResponse rq)
   => rq -> m rs 
 sendAWSThrowOnStatus = sendAWSThrowOnError HTTPStatusException

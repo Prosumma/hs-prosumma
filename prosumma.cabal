@@ -93,6 +93,7 @@ library
     , postgresql-simple
     , regex-tdfa
     , resource-pool
+    , resourcet
     , rio
     , servant-auth
     , servant-auth-server
@@ -161,6 +162,7 @@ executable prosumma-exe
     , prosumma
     , regex-tdfa
     , resource-pool
+    , resourcet
     , rio
     , servant-auth
     , servant-auth-server
@@ -244,6 +246,7 @@ test-suite library-test
     , random
     , regex-tdfa
     , resource-pool
+    , resourcet
     , rio
     , servant-auth
     , servant-auth-server

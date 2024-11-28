@@ -13,7 +13,8 @@ testCrypto = do
     it "successfully encrypts and decrypts" $ do
       masterKeyArn <- envString Nothing "AWS_MASTER_KEY_ARN"
       env <- liftIO $ newEnv discover
-      x <- runRIO env $ encryptMessageWithMasterKey masterKeyArn "bazzle"
-      liftIO $ print x
-      bazzle <- runRIO env $ decryptMessage x
+      bazzle <- runRIO env $ runResourceT $ do
+        x <- encryptMessageWithMasterKey masterKeyArn "bazzle"
+        liftIO $ print x
+        decryptMessage x
       bazzle `shouldBe` "bazzle"

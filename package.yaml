@@ -48,6 +48,7 @@ dependencies:
 - postgresql-simple
 - regex-tdfa
 - resource-pool
+- resourcet
 - rio
 - servant-auth
 - servant-auth-server
