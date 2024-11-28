@@ -11,6 +11,15 @@ module Prosumma.WLock (
 import RIO
 
 -- | A "write lock" which locks only writes but not reads.
+--
+-- This lock appears to work fine, but I'm not 100% certain.
+-- My understanding is that IO is thread-safe in Haskell in
+-- the sense that it can't be interleaved. Assuming this is
+-- true, my presumption is that this lock will work, and it
+-- certainly appears to.
+--
+-- At some point I'll likely nuke this in favor of an RWLock
+-- provided by some package somewhere.
 data WLock a = WLock {
   ref  :: !(IORef a),
   lock :: !(MVar ())
