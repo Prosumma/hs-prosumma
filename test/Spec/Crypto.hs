@@ -1,7 +1,7 @@
 module Spec.Crypto (testCrypto) where
 
 import Amazonka
-import Prelude (print)
+-- import Prelude (print)
 import Prosumma
 import Prosumma.Crypto
 import RIO
@@ -15,6 +15,6 @@ testCrypto = do
       env <- liftIO $ newEnv discover
       bazzle <- runRIO env $ runResourceT $ do
         x <- encryptMessageWithMasterKey masterKeyArn "bazzle"
-        liftIO $ print x
+        -- liftIO $ print x
         decryptMessage x
       bazzle `shouldBe` "bazzle"
