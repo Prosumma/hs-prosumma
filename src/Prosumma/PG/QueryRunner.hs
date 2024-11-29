@@ -7,13 +7,12 @@ module Prosumma.PG.QueryRunner (
   TransactionRunner(..)
 ) where
 
-import Data.Pool (Pool)
+import Prosumma.Pool
 import Database.PostgreSQL.Simple (formatQuery, Connection)
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import Database.PostgreSQL.Simple.Types
 import Prosumma.Textual
-import Prosumma.Util
 import RIO hiding (log)
 
 import qualified Database.PostgreSQL.Simple as PG

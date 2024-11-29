@@ -4,6 +4,7 @@ module Prosumma.Util (
   addL,
   addSuffix,
   also,
+  bindNested,
   coalesce,
   displayText,
   extractKeys,
@@ -17,23 +18,22 @@ module Prosumma.Util (
   uformat,
   whenNothing,
   whenNothingM,
-  withResource,
   Coalesce(..),
-  (??~),
-  (?>>=),
-  (<->),
   (<#>),
-  (<<&>>),
+  (<->),
   (<<$>>),
+  (<<&>>),
   (<=>),
   (><),
+  (>>>=),
+  (?>>=),
+  (??~),
   (>>=>)
 ) where
 
 import Control.Lens hiding ((??), (.~), (.=))
 import Data.Char
 import Data.Either.Extra
-import Data.Pool (Pool)
 import Data.Text.Read
 import Data.Foldable
 import Formatting
@@ -41,13 +41,13 @@ import Language.Haskell.TH
 import RIO hiding (Reader)
 import RIO.Map (singleton)
 
-import qualified Data.Pool as Pool
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
 import qualified RIO.HashMap as HashMap
 
 infixr 2 ><
 
+-- i.e., `xor`
 (><) :: Bool -> Bool -> Bool
 a >< b = (a || b) && not (a && b)
 
@@ -128,14 +128,19 @@ whenNothingM cond action = cond >>= maybe action return
 fromTextReader :: Reader a -> Text -> Maybe a
 fromTextReader reader text = hush (reader text) <&> fst
 
+bindNested :: (Monad m, Traversable n, Monad n) => m (n a) -> (a -> m (n b)) -> m (n b)
+bindNested mna f = (mna >>= traverse f) <&> join
+
+infixl 1 >>>=
+
+(>>>=) :: (Monad m, Traversable n, Monad n) => m (n a) -> (a -> m (n b)) -> m (n b)
+mna >>>= f = bindNested mna f
+
 infixl 1 ?>>=
 
+{-# DEPRECATED (?>>=) "Use the more general >>>= instead." #-}
 (?>>=) :: Monad m => m (Maybe a) -> (a -> m (Maybe b)) -> m (Maybe b)
-ma ?>>= f = do
-  ma' <- ma
-  case ma' of
-    Just a -> f a
-    Nothing -> return Nothing
+ma ?>>= f = bindNested ma f
 
 -- | Shortcut to create a pair.
 (<->) :: a -> b -> (a, b)
@@ -213,9 +218,6 @@ displayText = display
 
 uformat :: Format Utf8Builder a -> a
 uformat m = runFormat m (display . T.toStrict . T.toLazyText)
-
-withResource :: MonadUnliftIO m => Pool a -> (a -> m b) -> m b
-withResource pool action = withRunInIO $ \runInIO -> Pool.withResource pool (runInIO . action)
 
 extractKeys :: Hashable k => Set k -> HashMap k v -> HashMap k v
 extractKeys keys hm = HashMap.fromList . mapMaybe extract $ toList keys
