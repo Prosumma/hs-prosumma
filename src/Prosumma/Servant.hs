@@ -7,7 +7,6 @@ module Prosumma.Servant (
   maybeThrow404,
   runApplication,
   runApplicationWithContext,
-  runApplicationWithLogging,
   ServerExceptionHandler,
   ServerHandler,
   ServerResponse,
@@ -30,10 +29,10 @@ mapServerException e = case fromException e :: Maybe ServerError of
   Just se -> Left se
   Nothing -> Left err500
 
-defaultExceptionHandler :: SomeException -> RIO s (ServerResponse a)
+defaultExceptionHandler :: ServerExceptionHandler s a 
 defaultExceptionHandler = return . mapServerException
 
-loggingExceptionHandler :: HasLogFunc s => SomeException -> RIO s (ServerResponse a)
+loggingExceptionHandler :: HasLogFunc s => ServerExceptionHandler s a
 loggingExceptionHandler e = do
   logError $ displayShow e
   defaultExceptionHandler e
@@ -48,12 +47,6 @@ runApplication
   :: forall (api :: Type) s. HasServer api '[]
   => (forall a. ServerExceptionHandler s a) -> (forall a. StateTransform s a) -> Proxy api -> ServerT api (RIO s) -> s -> Application
 runApplication handler transform proxy api state = serve proxy $ hoistServer proxy (mapApp handler transform state) api
-
-{-# DEPRECATED runApplicationWithLogging "Use runApplication instead." #-}
-runApplicationWithLogging
-  :: forall (api :: Type) s. (HasLogFunc s, HasServer api '[])
-  => LogFunc -> Proxy api -> ServerT api (RIO s) -> s -> Application
-runApplicationWithLogging logFunc proxy api state = runApplication loggingExceptionHandler id proxy api $ state & logFuncL .~ logFunc
 
 runApplicationWithContext
   :: forall (api :: Type) (context :: [Type]) s. (HasServer api context, HasContextEntry (context .++ DefaultErrorFormatters) ErrorFormatters)
