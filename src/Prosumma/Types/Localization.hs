@@ -91,6 +91,7 @@ parseLocalization :: Parser Localization
 parseLocalization = Localization
   <$> parseLanguage
   <*> optional (Atto.char '-' *> parseRegion)
+  <*  Atto.endOfInput
 
 instance Show Localization where
   show = showTextual
