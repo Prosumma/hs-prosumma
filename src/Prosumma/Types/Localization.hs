@@ -1,0 +1,109 @@
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, NoGeneralisedNewtypeDeriving, PatternSynonyms, TemplateHaskell #-}
+
+module Prosumma.Types.Localization (
+  Language,
+  Localization(..),
+  Region,
+  pattern Language,
+  pattern Region,
+  languageL,
+  regionL
+) where
+
+import Data.Attoparsec.Text (Parser)
+import Data.Default
+import Formatting
+import Prosumma.Textual
+import Prosumma.Util
+import RIO
+
+import qualified Data.Attoparsec.Text as Atto
+import qualified RIO.Text as Text
+
+-- | ISO 639-1 language code
+--
+-- The safest way to get an instance of this type is
+-- to use `fromText` from its `FromText` instance.
+--
+-- `Language` also implements `IsString`, but this
+-- should be used with caution.
+newtype Language = Language' Text deriving (Eq, Ord, Generic, Hashable)
+
+parseLanguage :: Parser Language
+parseLanguage = Language' . Text.pack <$> Atto.count 2 (Atto.satisfy $ Atto.inClass "a-z")
+
+instance Show Language where
+  show = showTextual
+
+instance Default Language where
+  def = "en"
+
+instance FromText Language where
+  fromText lang = hush $ Atto.parseOnly (parseLanguage <* Atto.endOfInput) lang
+
+instance ToText Language where
+  toText (Language' lang) = lang
+
+instance IsString Language where
+  fromString = fromStringTextual "Language"
+
+{-# COMPLETE Language #-}
+pattern Language :: Text -> Language
+pattern Language lang <- Language' lang
+
+-- | Region code.
+-- This is an ISO 3166-1 alpha-2 region code.
+--
+-- The safest way to get an instance of this type is
+-- to use `fromText` from its `FromText` instance.
+--
+-- `Region` also implements `IsString`, but this
+-- should be used with caution.
+newtype Region = Region' Text deriving (Eq, Ord, Generic, Hashable)
+
+parseRegion :: Parser Region
+parseRegion = Region' . Text.pack <$> Atto.count 2 (Atto.satisfy $ Atto.inClass "A-Z")
+
+instance Show Region where
+  show = showTextual
+
+instance FromText Region where
+  fromText region = hush $ Atto.parseOnly (parseRegion <* Atto.endOfInput) region
+
+instance ToText Region where
+  toText (Region' region) = region
+
+instance IsString Region where
+  fromString = fromStringTextual "Region"
+
+{-# COMPLETE Region #-}
+pattern Region :: Text -> Region
+pattern Region region <- Region' region
+
+data Localization = Localization {
+  language :: !Language,
+  region :: !(Maybe Region)
+} deriving (Eq, Ord, Generic, Hashable)
+
+makeLensesL ''Localization
+
+parseLocalization :: Parser Localization
+parseLocalization = Localization
+  <$> parseLanguage
+  <*> optional (Atto.char '-' *> parseRegion)
+
+instance Show Localization where
+  show = showTextual
+
+instance Default Localization where
+  def = Localization def Nothing
+
+instance FromText Localization where
+  fromText localization = hush $ Atto.parseOnly (parseLocalization <* Atto.endOfInput) localization
+
+instance ToText Localization where
+  toText (Localization (Language lang) (Just (Region region))) = sformat (stext % "-" % stext) lang region 
+  toText (Localization (Language lang) Nothing) = lang 
+
+instance IsString Localization where
+  fromString = fromStringTextual "Localization"

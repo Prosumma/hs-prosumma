@@ -43,6 +43,7 @@ library
       Prosumma.Tagged
       Prosumma.Textual
       Prosumma.Types
+      Prosumma.Types.Localization
       Prosumma.Util
       Prosumma.Util.Environment
       Prosumma.Util.IO
