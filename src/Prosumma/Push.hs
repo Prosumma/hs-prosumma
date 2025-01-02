@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields, TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields #-}
 
 module Prosumma.Push (
   
@@ -34,4 +34,3 @@ instance ToJSON PushFormat where
 
 instance FromJSON PushFormat where
   parseJSON = parseJSONTextual "PushFormat"
-
