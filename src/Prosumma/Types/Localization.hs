@@ -7,6 +7,7 @@ module Prosumma.Types.Localization (
   pattern Language,
   pattern Region,
   languageL,
+  newLocalization,
   regionL
 ) where
 
@@ -87,11 +88,13 @@ data Localization = Localization {
 
 makeLensesL ''Localization
 
+newLocalization :: Text -> Maybe Text -> Maybe Localization 
+newLocalization lang region = Localization <$> fromText lang <*> (fromText <$> region) 
+
 parseLocalization :: Parser Localization
 parseLocalization = Localization
   <$> parseLanguage
   <*> optional (Atto.char '-' *> parseRegion)
-  <*  Atto.endOfInput
 
 instance Show Localization where
   show = showTextual
