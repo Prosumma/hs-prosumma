@@ -11,7 +11,6 @@ import Data.Default
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Prosumma.Textual
-import Prosumma.Util
 import RIO
 import Servant
 
@@ -29,6 +28,9 @@ pattern IANATimeZone tz <- IANATimeZone' tz
 instance Default IANATimeZone where
   def = "Etc/UTC" 
 
+instance Read IANATimeZone where
+  readPrec = readTextual
+
 instance Show IANATimeZone where
   show = showTextual
 
@@ -43,7 +45,7 @@ parseIANATimeZone = do
     segment = Text.pack <$> Atto.many1 (Atto.satisfy $ Atto.inClass "A-Za-z0-9_-")
 
 instance FromText IANATimeZone where
-  fromText = hush . Atto.parseOnly parseIANATimeZone
+  fromText = parseTextual parseIANATimeZone 
 
 instance ToText IANATimeZone where
   toText (IANATimeZone' tz) = tz

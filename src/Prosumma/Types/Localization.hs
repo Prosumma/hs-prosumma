@@ -37,6 +37,9 @@ newtype Language = Language' Text deriving (Eq, Ord, Generic, Hashable)
 parseLanguage :: Parser Language
 parseLanguage = Language' . Text.pack <$> Atto.count 2 (Atto.satisfy $ Atto.inClass "a-z")
 
+instance Read Language where
+  readPrec = readTextual
+
 instance Show Language where
   show = showTextual
 
@@ -44,7 +47,7 @@ instance Default Language where
   def = "en"
 
 instance FromText Language where
-  fromText lang = hush $ Atto.parseOnly (parseLanguage <* Atto.endOfInput) lang
+  fromText = parseTextual parseLanguage 
 
 instance ToText Language where
   toText (Language' lang) = lang
@@ -87,11 +90,14 @@ newtype Region = Region' Text deriving (Eq, Ord, Generic, Hashable)
 parseRegion :: Parser Region
 parseRegion = Region' . Text.pack <$> Atto.count 2 (Atto.satisfy $ Atto.inClass "A-Z")
 
+instance Read Region where
+  readPrec = readTextual
+
 instance Show Region where
   show = showTextual
 
 instance FromText Region where
-  fromText region = hush $ Atto.parseOnly (parseRegion <* Atto.endOfInput) region
+  fromText = parseTextual parseRegion 
 
 instance ToText Region where
   toText (Region' region) = region
@@ -139,6 +145,9 @@ parseLocalization = Localization
   <$> parseLanguage
   <*> optional (Atto.char '-' *> parseRegion)
 
+instance Read Localization where
+  readPrec = readTextual
+
 instance Show Localization where
   show = showTextual
 
@@ -146,7 +155,7 @@ instance Default Localization where
   def = Localization def Nothing
 
 instance FromText Localization where
-  fromText localization = hush $ Atto.parseOnly (parseLocalization <* Atto.endOfInput) localization
+  fromText = parseTextual parseLocalization 
 
 instance ToText Localization where
   toText (Localization (Language lang) (Just (Region region))) = sformat (stext % "-" % stext) lang region 
