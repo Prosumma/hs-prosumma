@@ -44,6 +44,7 @@ library
       Prosumma.Textual
       Prosumma.Types
       Prosumma.Types.Localization
+      Prosumma.Types.TimeZone
       Prosumma.Util
       Prosumma.Util.Environment
       Prosumma.Util.IO

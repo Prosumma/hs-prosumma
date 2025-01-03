@@ -22,6 +22,16 @@ testTypes = do
       (fromText "de" :: Maybe Language) `shouldBe` Just "de"
     it "cannot be initialized from an invalid string" $ do
       (fromText "DE" :: Maybe Language) `shouldBe` Nothing
+  describe "Region" $ do
+    it "can be initialized from a valid string" $ do
+      (fromText "DE" :: Maybe Region) `shouldBe` Just "DE"
+    it "cannot be initialized from an invalid string" $ do
+      (fromText "de" :: Maybe Region) `shouldBe` Nothing
+  describe "Localization" $ do
+    it "can be initialized from a valid string" $ do
+      (fromText "de-DE" :: Maybe Localization) `shouldBe` Just "de-DE"
+    it "cannot be initialized from an invalid string" $ do
+      (fromText "en-DEx" :: Maybe Localization) `shouldBe` Nothing
   describe "IANATimeZone" $ do
     it "is textual" $ do
       let iana :: Maybe IANATimeZone = fromText "America/New_York"

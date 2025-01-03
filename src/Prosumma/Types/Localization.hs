@@ -11,12 +11,16 @@ module Prosumma.Types.Localization (
   regionL
 ) where
 
+import Data.Aeson
 import Data.Attoparsec.Text (Parser)
 import Data.Default
+import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.ToField
 import Formatting
 import Prosumma.Textual
 import Prosumma.Util
 import RIO
+import Servant
 
 import qualified Data.Attoparsec.Text as Atto
 import qualified RIO.Text as Text
@@ -48,6 +52,24 @@ instance ToText Language where
 instance IsString Language where
   fromString = fromStringTextual "Language"
 
+instance ToJSON Language where
+  toJSON = toJSON . toText 
+
+instance FromJSON Language where
+  parseJSON = parseJSONTextual "Language"
+
+instance ToField Language where
+  toField = toField . toText
+
+instance FromField Language where
+  fromField = fromFieldTextual "Language"
+
+instance ToHttpApiData Language where
+  toUrlPiece = toText
+
+instance FromHttpApiData Language where
+  parseUrlPiece = parseUrlPieceTextual "Language"
+
 {-# COMPLETE Language #-}
 pattern Language :: Text -> Language
 pattern Language lang <- Language' lang
@@ -77,10 +99,31 @@ instance ToText Region where
 instance IsString Region where
   fromString = fromStringTextual "Region"
 
+instance ToJSON Region where
+  toJSON = toJSON . toText
+
+instance FromJSON Region where
+  parseJSON = parseJSONTextual "Region"
+
+instance ToField Region where
+  toField = toField . toText
+
+instance FromField Region where
+  fromField = fromFieldTextual "Region"
+
+instance ToHttpApiData Region where
+  toUrlPiece = toText
+
+instance FromHttpApiData Region where
+  parseUrlPiece = parseUrlPieceTextual "Region"
+
 {-# COMPLETE Region #-}
 pattern Region :: Text -> Region
 pattern Region region <- Region' region
 
+-- | IETF BCP 47 language tag
+--
+-- I call this a "Localization".
 data Localization = Localization {
   language :: !Language,
   region :: !(Maybe Region)
@@ -111,3 +154,21 @@ instance ToText Localization where
 
 instance IsString Localization where
   fromString = fromStringTextual "Localization"
+
+instance ToJSON Localization where 
+  toJSON = toJSON . toText
+
+instance FromJSON Localization where
+  parseJSON = parseJSONTextual "Localization"
+
+instance ToField Localization where
+  toField = toField . toText
+
+instance FromField Localization where
+  fromField = fromFieldTextual "Localization"
+
+instance ToHttpApiData Localization where
+  toUrlPiece = toText
+
+instance FromHttpApiData Localization where
+  parseUrlPiece = parseUrlPieceTextual "Localization"
