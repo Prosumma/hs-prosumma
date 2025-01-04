@@ -5,10 +5,12 @@ module Spec.Types (testTypes) where
 import Data.Aeson
 import Data.Default
 import Prosumma.Textual
+import Prosumma.Types.IP
 import Prosumma.Types.Localization
 import Prosumma.Types.TimeZone
 import Prosumma.Util
 import RIO
+import RIO.Partial
 import Test.Hspec
 
 newtype Foo = Foo { foo :: CI Text } deriving (Generic, Eq, Show)
@@ -49,4 +51,13 @@ testTypes = do
     it "should deserialize correctly" $ do
       let json = "{\"foo\":\"foo\"}"
       let expected = Foo "foo"
+      eitherDecode json `shouldBe` Right expected
+  describe "IP" $ do
+    it "should serialize correctly" $ do
+      let ip = fromText "192.168.1.1" :: Maybe IP
+      let expected = "\"192.168.1.1\""
+      encode ip `shouldBe` expected 
+    it "should deserialize correctly" $ do
+      let json = "\"192.168.1.1\""
+      let expected = fromJust (fromText "192.168.1.1") :: IP
       eitherDecode json `shouldBe` Right expected
