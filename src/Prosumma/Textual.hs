@@ -1,7 +1,6 @@
 module Prosumma.Textual (
   fromFieldTextual,
   fromStringTextual,
-  ifMatchTextual,
   parseJSONTextual,
   parseUrlPieceTextual,
   parseTextual,
@@ -29,7 +28,6 @@ import RIO.Partial
 import RIO.Text
 import Text.Printf
 import Text.Read (readPrec, readS_to_Prec, ReadPrec)
-import Text.Regex.TDFA
 
 import qualified Data.Attoparsec.Text as Atto
 
@@ -76,17 +74,6 @@ instance ToText Double where
 -- is valid for the target `Textual`.
 unsafeFromText :: FromText a => Text -> a
 unsafeFromText = fromJust . fromText
-
--- | Helper to implement `Textual`'s `fromText`
--- for simple newtype wrappers.
---
--- > instance Textual Foo where
--- >   fromText = ifMatchTextual "^[a-z]{3,7}$" Foo
--- >   toText (Foo foo) = foo
-ifMatchTextual :: Text -> (Text -> a) -> Text -> Maybe a 
-ifMatchTextual regex make source = if source =~ regex
-  then Just $ make source
-  else Nothing
 
 -- | Helper to implement `FromText`'s `fromText` using an Attoparsec parser.
 parseTextual :: Atto.Parser a -> Text -> Maybe a 

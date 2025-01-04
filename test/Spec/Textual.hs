@@ -3,18 +3,23 @@ module Spec.Textual (
 ) where
 
 import Data.Aeson
+import Data.Attoparsec.Text
 import Data.String.Conversions
 import Prosumma.Textual
 import RIO
 import Test.Hspec
 
+import qualified RIO.Text as Text
+
 newtype Foo = Foo Text deriving (Eq, Show)
 
-fooRegex :: Text
-fooRegex = "^[a-z]{2,3}$"
-
 instance FromText Foo where
-  fromText = ifMatchTextual fooRegex Foo
+  fromText = parseTextual $ do 
+    let match = satisfy $ inClass "[a-z]"
+    prefix <- count 2 match
+    suffix <- fromMaybe mempty <$> optional (count 1 match) 
+    endOfInput
+    return $ Foo $ Text.pack $ prefix <> suffix
 
 instance ToText Foo where
   toText (Foo foo) = foo

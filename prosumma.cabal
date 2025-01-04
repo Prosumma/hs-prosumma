@@ -95,7 +95,6 @@ library
     , mtl
     , network
     , postgresql-simple
-    , regex-tdfa
     , resource-pool
     , resourcet
     , rio
@@ -164,7 +163,6 @@ executable prosumma-exe
     , network
     , postgresql-simple
     , prosumma
-    , regex-tdfa
     , resource-pool
     , resourcet
     , rio
@@ -248,7 +246,6 @@ test-suite library-test
     , postgresql-simple
     , prosumma
     , random
-    , regex-tdfa
     , resource-pool
     , resourcet
     , rio
