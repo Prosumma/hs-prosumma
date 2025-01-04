@@ -4,6 +4,9 @@ module Prosumma.Textual (
   ifMatchTextual,
   parseJSONTextual,
   parseUrlPieceTextual,
+  parseTextual,
+  readPrec,
+  readTextual,
   showTextual,
   toFieldTextual,
   toJSONTextual,
@@ -13,6 +16,7 @@ module Prosumma.Textual (
 ) where
 
 import Data.Aeson.Types
+import Data.Attoparsec.Text (parseOnly, endOfInput)
 import Data.Either.Extra
 import Data.String.Conversions
 import Data.Text.Read
@@ -24,7 +28,10 @@ import RIO hiding (Reader)
 import RIO.Partial
 import RIO.Text
 import Text.Printf
+import Text.Read (readPrec, readS_to_Prec, ReadPrec)
 import Text.Regex.TDFA
+
+import qualified Data.Attoparsec.Text as Atto
 
 class FromText a where
   fromText :: Text -> Maybe a
@@ -81,6 +88,10 @@ ifMatchTextual regex make source = if source =~ regex
   then Just $ make source
   else Nothing
 
+-- | Helper to implement `FromText`'s `fromText` using an Attoparsec parser.
+parseTextual :: Atto.Parser a -> Text -> Maybe a 
+parseTextual parser source = hush $ parseOnly (parser <* endOfInput) source
+
 -- | Helper to implement `FromField`'s `fromField` for a `Textual`.
 --
 -- > instance FromField Foo where
@@ -126,8 +137,18 @@ fromStringTextual name string = case fromText (fromString string) of
 showTextual :: ToText a => a -> String
 showTextual = convertString . toText
 
+-- | Implements `Read` in terms of `FromText`.
+--
+-- > instance Read Foo where
+-- >   readPrec = readTextual
+readTextual :: FromText a => ReadPrec a
+readTextual = readS_to_Prec $ const $ \input -> do
+  case fromText (pack input) of
+    Just thing -> [(thing, "")]
+    Nothing -> []
+
 -- | Implements `parseUrlPiece` in terms of 'Textual'. 
 parseUrlPieceTextual :: FromText a => Text -> Text -> Either Text a
 parseUrlPieceTextual name text = maybeToEither err $ fromText text
   where
-    err = convertString $ format ("'" % stext % "' is not a valid " % stext % ".") text name
+    err = convertString $ sformat ("'" % stext % "' is not a valid " % stext % ".") text name

@@ -1,9 +1,8 @@
 module Spec.Crypto (testCrypto) where
 
 import Amazonka
--- import Prelude (print)
-import Prosumma
 import Prosumma.Crypto
+import Prosumma.Util.Environment
 import RIO
 import Test.Hspec
 

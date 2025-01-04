@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           prosumma
-version:        1.8.0.0
+version:        1.9.0.0
 description:    Please see the README on GitHub at <https://github.com/prosumma/hs-prosumma#readme>
 homepage:       https://github.com/prosumma/prosumma#readme
 bug-reports:    https://github.com/prosumma/prosumma/issues
@@ -24,7 +24,6 @@ source-repository head
 
 library
   exposed-modules:
-      Prosumma
       Prosumma.Aeson
       Prosumma.AWS
       Prosumma.AWS.DynamoDB
@@ -42,7 +41,10 @@ library
       Prosumma.SQLite.QueryRunner
       Prosumma.Tagged
       Prosumma.Textual
-      Prosumma.Types
+      Prosumma.Types.IP
+      Prosumma.Types.Localization
+      Prosumma.Types.OS
+      Prosumma.Types.TimeZone
       Prosumma.Util
       Prosumma.Util.Environment
       Prosumma.Util.IO
