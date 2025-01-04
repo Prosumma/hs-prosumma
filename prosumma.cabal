@@ -24,7 +24,6 @@ source-repository head
 
 library
   exposed-modules:
-      Prosumma
       Prosumma.Aeson
       Prosumma.AWS
       Prosumma.AWS.DynamoDB
@@ -42,7 +41,6 @@ library
       Prosumma.SQLite.QueryRunner
       Prosumma.Tagged
       Prosumma.Textual
-      Prosumma.Types
       Prosumma.Types.IP
       Prosumma.Types.Localization
       Prosumma.Types.OS
