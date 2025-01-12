@@ -5,10 +5,10 @@ module Spec.Types (testTypes) where
 import Data.Aeson
 import Data.Default
 import Prosumma.Textual
+import Prosumma.Types
 import Prosumma.Types.IP
 import Prosumma.Types.Localization
 import Prosumma.Types.TimeZone
-import Prosumma.Util
 import RIO
 import RIO.Partial
 import Test.Hspec

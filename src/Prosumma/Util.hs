@@ -18,7 +18,6 @@ module Prosumma.Util (
   uformat,
   whenNothing,
   whenNothingM,
-  CI,
   Coalesce(..),
   (<#>),
   (<->),
@@ -33,8 +32,6 @@ module Prosumma.Util (
 ) where
 
 import Control.Lens hiding ((??), (.~), (.=))
-import Data.Aeson
-import Data.CaseInsensitive (CI, FoldCase)
 import Data.Char
 import Data.Either.Extra
 import Data.Text.Read
@@ -44,7 +41,6 @@ import Language.Haskell.TH
 import RIO hiding (Reader)
 import RIO.Map (singleton)
 
-import qualified Data.CaseInsensitive as CI
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Builder as T
 import qualified RIO.HashMap as HashMap
@@ -227,9 +223,3 @@ extractKeys :: Hashable k => Set k -> HashMap k v -> HashMap k v
 extractKeys keys hm = HashMap.fromList . mapMaybe extract $ toList keys
   where
     extract k = (k,) <$> HashMap.lookup k hm
-
-instance (FoldCase a, FromJSON a) => FromJSON (CI a) where
-  parseJSON value = CI.mk <$> parseJSON value
-
-instance ToJSON a => ToJSON (CI a) where
-  toJSON = toJSON . CI.original
