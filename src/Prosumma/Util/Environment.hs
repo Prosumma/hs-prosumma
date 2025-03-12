@@ -29,7 +29,7 @@ instance Exception MissingEnvError
 -- then the default is used. If the provided default is `Nothing`, then a
 -- `MissingEnvError` is thrown with the given key.
 envString :: (MonadIO m, IsString a) => Maybe a -> Text -> m a
-envString def key = whenNothingM (envMaybe key <&> (?? def)) $
+envString def key = whenNothingM (envMaybe key <&> (<|> def)) $
   throwIO $ MissingEnvError key
 
 -- | Gets an environment variable.
@@ -39,7 +39,7 @@ envString def key = whenNothingM (envMaybe key <&> (?? def)) $
 -- then the default is used. If the provided default is `Nothing`, then a
 -- `MissingEnvError` is thrown with the given key.
 envValue :: MonadIO m => Maybe a -> Reader a -> Text -> m a
-envValue def r key = whenNothingM (envRead r key <&> (?? def)) $
+envValue def r key = whenNothingM (envRead r key <&> (<|> def)) $
   throwIO $ MissingEnvError key
 
 envMaybe :: (MonadIO m, IsString a) => Text -> m (Maybe a)

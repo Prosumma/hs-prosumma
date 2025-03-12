@@ -5,7 +5,6 @@ module Prosumma.Util (
   addSuffix,
   also,
   bindNested,
-  coalesce,
   displayText,
   extractKeys,
   fromTextReader,
@@ -18,7 +17,6 @@ module Prosumma.Util (
   uformat,
   whenNothing,
   whenNothingM,
-  Coalesce(..),
   (<#>),
   (<->),
   (<<$>>),
@@ -27,7 +25,6 @@ module Prosumma.Util (
   (><),
   (>>>=),
   (?>>=),
-  (??~),
   (>>=>)
 ) where
 
@@ -85,27 +82,6 @@ makeLensesL = makeLensesWith addL
 {-# DEPRECATED makeProsummaLenses "Use makeLensesL instead." #-}
 makeProsummaLenses :: Name -> DecsQ
 makeProsummaLenses = makeLensesWith abbreviatedFields
-
-class Coalesce a where
-  (??) :: a -> a -> a
-
-infixl 1 ??
-
-coalesce :: (Foldable f, Coalesce a) => a -> f a -> a
-coalesce = foldr (??)
-
-instance Coalesce (Maybe a) where
-  (??) = (<|>)
-
-instance Coalesce (Either e a) where
-  r@(Right _r) ?? _other = r
-  (Left _e) ?? r@(Right _r) = r
-  e1@(Left _e1) ?? (Left _e2) = e1
-
-infixl 1 ??~
-
-(??~) :: (Applicative m, Coalesce (m a)) => m a -> a -> m a
-a ??~ b = a ?? pure b
 
 -- | Do something as a side effect.
 --
