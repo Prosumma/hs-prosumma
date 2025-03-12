@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveDataTypeable, DuplicateRecordFields #-}
 
 module Prosumma.Push (
-  
+  PushFormat(..)
 ) where
 
 import Data.Aeson
