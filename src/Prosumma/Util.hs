@@ -76,6 +76,9 @@ addSuffix suffix = defaultFieldRules & lensField .~ suffixFieldNamer suffix
       | c == '_' = cs
       | otherwise = s 
 
+-- | Makes lenses with an L suffix.
+--
+-- Use either this or labels.
 makeLensesL :: Name -> DecsQ
 makeLensesL = makeLensesWith addL
 
