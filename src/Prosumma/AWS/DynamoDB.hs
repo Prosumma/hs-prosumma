@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, OverloadedLabels, RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE DataKinds, ExistentialQuantification, FlexibleContexts, OverloadedLabels, RankNTypes, TypeFamilies, UndecidableInstances #-}
 
 {-|
 Module: Prosumma.AWS.DynamoDB
@@ -138,7 +138,7 @@ dayTimeFormat :: String
 dayTimeFormat = "%Y-%m-%d"
 
 instance Exception ValueError where
-  toException = toException . DynamoDBException 
+  toException = toException . DynamoDBException
   fromException e = do
     DynamoDBException e' <- fromException e
     cast e'
@@ -155,7 +155,7 @@ type family AttributeConstructorType (kind :: AttributeConstructor) where
   AttributeConstructorType 'ConstructorN = Text
   AttributeConstructorType 'ConstructorB = Base64
 
-type family TypeAttributeConstructor a :: AttributeConstructor 
+type family TypeAttributeConstructor a :: AttributeConstructor
 type instance TypeAttributeConstructor Text = 'ConstructorS
 type instance TypeAttributeConstructor String = 'ConstructorS
 type instance TypeAttributeConstructor UUID = 'ConstructorS
@@ -204,7 +204,7 @@ instance FromScalarAttributeConstructor 'ConstructorN where
   fromScalarAttributeConstructor _ attr = throwError $ valueInvalid attr
 
 instance FromScalarAttributeConstructor 'ConstructorB where
-  fromScalarAttributeConstructor _ (B base64) = return base64 
+  fromScalarAttributeConstructor _ (B base64) = return base64
   fromScalarAttributeConstructor _ attr = throwError $ valueInvalid attr
 
 class FromVectorAttributeConstructor (kind :: AttributeConstructor) where
@@ -225,7 +225,7 @@ instance FromVectorAttributeConstructor 'ConstructorB where
 class (FromAttributeConstructorType a, FromScalarAttributeConstructor (TypeAttributeConstructor a)) => FromScalarAttributeValue a where
   fromScalarAttributeValue :: Maybe AttributeValue -> Either ValueError a
   fromScalarAttributeValue (Just attr) = do
-    let proxy = Proxy :: Proxy (TypeAttributeConstructor a) 
+    let proxy = Proxy :: Proxy (TypeAttributeConstructor a)
     value <- fromScalarAttributeConstructor proxy attr
     maybeToEither (valueInvalid attr) $ fromAttributeConstructorType value
   fromScalarAttributeValue Nothing = throwError valueMissing
@@ -254,14 +254,14 @@ instance Ord a => FromVector a (Set a) where
 class (FromAttributeConstructorType e, FromVectorAttributeConstructor (TypeAttributeConstructor e), FromVector e a) => FromVectorAttributeValue e a | a -> e where
   fromVectorAttributeValue :: Maybe AttributeValue -> Either ValueError a
   fromVectorAttributeValue (Just attr) = do
-    let proxy = Proxy :: Proxy (TypeAttributeConstructor e) 
+    let proxy = Proxy :: Proxy (TypeAttributeConstructor e)
     vector <- fromVectorAttributeConstructor proxy attr
     maybeToEither (valueInvalid attr) $ fromVector <$> Vector.mapM fromAttributeConstructorType vector
   fromVectorAttributeValue Nothing = return mempty
 
 instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeConstructor a)) => FromVectorAttributeValue a [a]
-instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeConstructor a)) => FromVectorAttributeValue a (Vector a) 
-instance (Ord a, FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeConstructor a)) => FromVectorAttributeValue a (Set a) 
+instance (FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeConstructor a)) => FromVectorAttributeValue a (Vector a)
+instance (Ord a, FromAttributeConstructorType a, FromVectorAttributeConstructor (TypeAttributeConstructor a)) => FromVectorAttributeValue a (Set a)
 
 class FromAttributeValue a where
   fromAttributeValue :: Maybe AttributeValue -> Either ValueError a
@@ -276,7 +276,7 @@ instance (Ord a, FromAttributeConstructorType a, FromVectorAttributeConstructor 
   fromAttributeValue = fromVectorAttributeValue
 
 instance FromAttributeValue Text where
-  fromAttributeValue = fromScalarAttributeValue 
+  fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue String where
   fromAttributeValue = fromScalarAttributeValue
@@ -296,26 +296,26 @@ instance FromAttributeValue ByteString where
 instance FromAttributeValue Int where
   fromAttributeValue = fromScalarAttributeValue
 
-instance FromAttributeValue Integer where 
+instance FromAttributeValue Integer where
   fromAttributeValue = fromScalarAttributeValue
 
 instance FromAttributeValue AttributeValue where
-  fromAttributeValue (Just attr) = return attr 
+  fromAttributeValue (Just attr) = return attr
   fromAttributeValue Nothing = throwError valueMissing
 
 instance FromAttributeValue a => FromAttributeValue (Maybe a) where
-  fromAttributeValue (Just NULL) = return Nothing 
+  fromAttributeValue (Just NULL) = return Nothing
   fromAttributeValue Nothing = return Nothing
-  fromAttributeValue attr = Just <$> fromAttributeValue attr 
+  fromAttributeValue attr = Just <$> fromAttributeValue attr
 
 class FromTableItem a where
   fromTableItem :: TableItem -> Either ValueError a
 
 readAttributeValue :: FromAttributeValue a => (Text -> i -> Maybe AttributeValue) -> i -> Text -> Either ValueError a
-readAttributeValue lookup item key = case fromAttributeValue value of 
+readAttributeValue lookup item key = case fromAttributeValue value of
   Left (ValueMissing _) -> Left (ValueMissing (Just key))
   Left (ValueInvalid Nothing errorValue e) -> Left (ValueInvalid (Just key) errorValue e)
-  Left e -> Left (ValueInvalid (Just key) (fromJust value) (Just e)) 
+  Left e -> Left (ValueInvalid (Just key) (fromJust value) (Just e))
   Right a -> return a
   where
     value = lookup key item
@@ -332,7 +332,7 @@ readTableItem :: ((forall v. FromAttributeValue v => Text -> Either ValueError v
 readTableItem read item = read $ readTableItemAttributeValue item
 
 readAttributeItemAttributeValue :: FromAttributeValue a => AttributeItem -> Text -> Either ValueError a
-readAttributeItemAttributeValue = readAttributeValue Map.lookup 
+readAttributeItemAttributeValue = readAttributeValue Map.lookup
 
 -- | Used to read a type from an @AttributeValue@ of type @M@. This is best used to implement @FromAttributeValue@ for a complex type.
 --
@@ -343,7 +343,7 @@ readAttributeItemAttributeValue = readAttributeValue Map.lookup
 -- This is used for nested complex types.
 readAttributeItem :: ((forall v. FromAttributeValue v => Text -> Either ValueError v) -> Either ValueError a) -> Maybe AttributeValue -> Either ValueError a
 readAttributeItem read (Just (M item)) = case read $ readAttributeItemAttributeValue item of
-  Left e -> throwError $ ValueInvalid Nothing (M item) (Just e) 
+  Left e -> throwError $ ValueInvalid Nothing (M item) (Just e)
   Right a -> return a
 readAttributeItem _ Nothing = throwError $ ValueMissing Nothing
 readAttributeItem _ (Just errorValue) = throwError $ ValueInvalid Nothing errorValue Nothing
@@ -352,7 +352,7 @@ class ToAttributeConstructorType a where
   toAttributeConstructorType :: a -> AttributeConstructorType (TypeAttributeConstructor a)
 
 instance ToAttributeConstructorType Text where
-  toAttributeConstructorType = id 
+  toAttributeConstructorType = id
 
 instance ToAttributeConstructorType String where
   toAttributeConstructorType = Text.pack
@@ -367,16 +367,16 @@ instance ToAttributeConstructorType Day where
   toAttributeConstructorType = Text.pack . Time.formatTime Time.defaultTimeLocale dayTimeFormat
 
 instance ToAttributeConstructorType Int where
-  toAttributeConstructorType = toText 
+  toAttributeConstructorType = toText
 
 instance ToAttributeConstructorType Integer where
-  toAttributeConstructorType = toText 
+  toAttributeConstructorType = toText
 
 instance ToAttributeConstructorType ByteString where
   toAttributeConstructorType = Base64
 
 class ToScalarAttributeConstructor (kind :: AttributeConstructor) where
-  toScalarAttributeConstructor :: Proxy kind -> AttributeConstructorType kind -> AttributeValue 
+  toScalarAttributeConstructor :: Proxy kind -> AttributeConstructorType kind -> AttributeValue
 
 instance ToScalarAttributeConstructor 'ConstructorS where
   toScalarAttributeConstructor _ = S
@@ -413,7 +413,7 @@ instance ToVectorAttributeConstructor 'ConstructorB where
   toVectorAttributeConstructor _ = BS
 
 class ToVector e c | c -> e where
-  toVector :: c -> Vector e 
+  toVector :: c -> Vector e
 
 instance ToVector a (Vector a) where
   toVector = id
@@ -428,45 +428,45 @@ class (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttribute
   toVectorAttributeValue :: a -> AttributeValue
   toVectorAttributeValue = toVectorAttributeConstructor (Proxy :: Proxy (TypeAttributeConstructor e)) . Vector.map toAttributeConstructorType . toVector
 
-instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToVectorAttributeValue e (Vector e) 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToVectorAttributeValue e (Vector e)
 instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToVectorAttributeValue e [e]
-instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToVectorAttributeValue e (Set e) 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToVectorAttributeValue e (Set e)
 
 class ToAttributeValue a where
   toAttributeValue :: a -> AttributeValue
 
-instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue (Vector e) where 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue (Vector e) where
   toAttributeValue = toVectorAttributeValue
 
-instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue [e] where 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue [e] where
   toAttributeValue = toVectorAttributeValue
 
-instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue (Set e) where 
+instance (ToAttributeConstructorType e, ToVectorAttributeConstructor (TypeAttributeConstructor e)) => ToAttributeValue (Set e) where
   toAttributeValue = toVectorAttributeValue
 
 instance ToAttributeValue Text where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue String where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue ByteString where
   toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue Int where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue Integer where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue UUID where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue UTCTime where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue Day where
-  toAttributeValue = toScalarAttributeValue 
+  toAttributeValue = toScalarAttributeValue
 
 instance ToAttributeValue AttributeValue where
   toAttributeValue = id
@@ -487,7 +487,7 @@ isNotNull _ = True
 -- > data User = User !Text !Int
 -- > instance ToTableItem User where
 -- >   toTableItem (User name age) = writeTableItem [ "name" =: name, "age" =: age ]
-writeTableItem :: [(Text, AttributeValue)] -> TableItem 
+writeTableItem :: [(Text, AttributeValue)] -> TableItem
 writeTableItem = HashMap.filter isNotNull . HashMap.fromList
 
 -- | Used to write a type into an @AttributeValue@ of type @M@ (Map).
@@ -497,7 +497,7 @@ writeTableItem = HashMap.filter isNotNull . HashMap.fromList
 -- > data User = User !Text !Int
 -- > instance ToAttributeValue User where
 -- >  toAttributeValue (User name age) = writeAttributeItem [ "name" =: name, "age" =: age ]
-writeAttributeItem :: [(Text, AttributeValue)] -> AttributeValue 
+writeAttributeItem :: [(Text, AttributeValue)] -> AttributeValue
 writeAttributeItem = M . Map.filter isNotNull . Map.fromList
 
 infixr 8 =:
@@ -516,18 +516,18 @@ putItem' table item = do
 putItem :: (ToTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> a -> m ()
 putItem table = putItem' table . toTableItem
 
-getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> TableItem -> m (Maybe a) 
+getItem' :: (FromTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> TableItem -> m (Maybe a)
 getItem' table item = do
-  let request = newGetItem table & #key .~ item  
+  let request = newGetItem table & #key .~ item
   response <- sendAWSThrowOnStatus request
   case fromTableItem <$> response ^. #item of
     Just (Right a) -> return $ Just a
     Nothing -> return Nothing
     Just (Left e) -> throwM e
 
-getItem 
+getItem
   :: (ToTableItem k, FromTableItem a, HasAWSEnv env, MonadReader env m, MonadResource m, MonadThrow m)
-  => Text -> k -> m (Maybe a) 
+  => Text -> k -> m (Maybe a)
 getItem table = getItem' table . toTableItem
 
 scanWithFilter
@@ -540,7 +540,7 @@ scanWithFilter table filter = do
     Just (errors, items) -> do
       for_ errors (logErrorS logSource . displayShow)
       return items
-    Nothing -> return [] 
+    Nothing -> return []
 
 scan :: (FromTableItem a, HasAWSEnv env, HasLogFunc env, MonadReader env m, MonadResource m, MonadThrow m) => Text -> m [a]
 scan table = scanWithFilter table Nothing
