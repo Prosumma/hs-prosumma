@@ -14,8 +14,8 @@ data User = User {
   name :: !Text
 } deriving (Eq, Show, Generic)
 
-instance FromRow User where
-instance ToRow User where
+instance FromRow User
+instance ToRow User
 
 newtype MockDB = MockDB { users :: IORef [User] }
 
@@ -24,6 +24,10 @@ newtype MockDB = MockDB { users :: IORef [User] }
 -- The repository pattern is overkill for this,
 -- but this is both a test of it and a reference
 -- for it.
+--
+-- Note that the repository itself is always
+-- the last parameter. This improves ergonomics
+-- when implementing.
 class UserRepository r where
   createUserSchemaR :: MonadIO m => r -> m ()
   addUserR :: MonadIO m => User -> r -> m ()
@@ -48,6 +52,9 @@ instance HasUserRepository Connection (SQLite Connection) where
 instance HasUserRepository MockDB MockDB where
   getUserRepository = RIO.id
 
+-- | A helper method to implement the repository.
+--
+-- Not absolutely required, but makes things easier.
 withUserRepository :: (MonadReader env m, HasUserRepository r env) => (r -> m a) -> m a
 withUserRepository action = asks getUserRepository >>= action
 
